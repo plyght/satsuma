@@ -56,13 +56,12 @@ struct CompressToolView: View {
                         Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 44, height: 44)
                         VStack(alignment: .leading, spacing: 3) {
                             Text(url.lastPathComponent)
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(Theme.ink)
+                                .font(.headline)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
                             Text("\(FileSizeFormatter.string(FileSizeFormatter.size(of: url))) · saves as \(Compressor.outputFormat(for: url).displayName)")
-                                .font(.system(size: 14))
-                                .foregroundStyle(Theme.inkSecondary)
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
                         }
                         Spacer()
                     }
@@ -87,27 +86,19 @@ struct CompressToolView: View {
             VStack(alignment: .leading, spacing: 14) {
                 Toggle(isOn: $useTarget.animation(.easeInOut(duration: 0.18))) {
                     Text("Target file size")
-                        .font(.system(size: 17))
-                        .foregroundStyle(Theme.ink)
                 }
                 .toggleStyle(.switch)
-                .tint(Theme.accent)
 
                 if useTarget {
                     HStack(spacing: 10) {
                         TextField("Size", value: $targetValue, format: .number)
-                            .textFieldStyle(.plain)
-                            .font(.system(size: 15, weight: .medium))
+                            .textFieldStyle(.roundedBorder)
                             .multilineTextAlignment(.trailing)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
                             .frame(width: 96)
-                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.white))
-                            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.cardStroke))
                         SegmentedPicker(selection: $targetUnit, options: SizeUnit.allCases.map { ($0, $0.rawValue) })
                         Text("per file")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Theme.inkSecondary)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
                     }
                     FormHint("Images use a quality search and downscale if needed. Videos and audio pick a bitrate from the duration (FFmpeg required).")
                 }
@@ -117,8 +108,8 @@ struct CompressToolView: View {
             .card()
 
             Text("\(session.files.count) file\(session.files.count == 1 ? "" : "s"), \(FileSizeFormatter.string(totalSize)) total. Originals stay untouched; compressed copies are saved to \(settings.outputLocation.title.lowercased()).")
-                .font(.system(size: 13))
-                .foregroundStyle(Theme.inkSecondary)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
         .onAppear { resize = settings.compressionResizeLongEdge }
     }

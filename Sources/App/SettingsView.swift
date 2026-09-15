@@ -14,6 +14,12 @@ struct SettingsView: View {
                 Toggle("Show a notification when done", isOn: $settings.showNotifications)
                 Toggle("Launch Satsuma at login", isOn: $settings.launchAtLogin)
             }
+            Section("Appearance") {
+                Picker("Theme", selection: $settings.appearanceMode) {
+                    ForEach(AppearanceMode.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+            }
             Section("Images") {
                 HStack {
                     Text("JPEG / HEIC / WebP quality")
@@ -49,7 +55,7 @@ struct SettingsView: View {
                     Button("Choose…") { chooseFFmpeg() }
                 }
                 HStack(spacing: 6) {
-                    Icon(ffmpegStatus == nil ? .alertTriangle : .checkCircle, size: 14)
+                    Image(systemName: ffmpegStatus == nil ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
                         .foregroundStyle(ffmpegStatus == nil ? .orange : .green)
                     Text(ffmpegStatus.map { "Using \($0)" } ?? "FFmpeg not found. Install with `brew install ffmpeg` or pick the binary.")
                         .font(.caption)

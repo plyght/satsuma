@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 
 enum RadialAction: Hashable {
     case convert(FileFormat)
@@ -9,7 +10,7 @@ struct RadialItem: Identifiable, Hashable {
     let action: RadialAction
     let label: String
     let detail: String
-    let icon: Reicon?
+    let symbol: String
 
     var id: RadialAction { action }
 
@@ -17,113 +18,246 @@ struct RadialItem: Identifiable, Hashable {
         action = .convert(format)
         label = format.displayName
         detail = "Convert to \(format.displayName)"
-        icon = nil
+        symbol = format.category.symbol
     }
 
     init(tool: ToolID) {
         action = .tool(tool)
         label = tool.radialLabel
         detail = tool.title
-        icon = tool.icon
+        symbol = tool.symbol
     }
 }
 
-final class RadialBackdrop: NSView {
-    private let glass: NSView
+struct RadialGeometry {
+    var innerRadius: CGFloat = 60
+    var outerRadius: CGFloat = 150
+    var gap: CGFloat = 4
+    var count: Int
 
-    override init(frame frameRect: NSRect) {
-        #if compiler(>=6.2)
-        if #available(macOS 26.0, *) {
-            let view = NSGlassEffectView()
-            view.cornerRadius = frameRect.width / 2
-            view.tintColor = NSColor.white.withAlphaComponent(0.35)
-            glass = view
-        } else {
-            glass = RadialBackdrop.material()
+    var slice: CGFloat { 2 * .pi / CGFloat(max(count, 1)) }
+
+    var corner: CGFloat {
+        let wanted: CGFloat = count > 8 ? 10 : 14
+        let limit = (innerRadius * sin(slice * 0.34) - gap / 2) / (1 - sin(slice * 0.34))
+        return max(4, min(wanted, limit))
+    }
+
+    var labelRadius: CGFloat { (innerRadius + outerRadius) / 2 }
+
+    var labelWidth: CGFloat {
+        let chord = 2 * labelRadius * sin(slice / 2)
+        return max(24, min(chord - 2 * corner, outerRadius - innerRadius))
+    }
+
+    func angles(for index: Int) -> (start: CGFloat, end: CGFloat) {
+        let end = CGFloat.pi / 2 - slice * CGFloat(index) + slice / 2
+        return (end - slice, end)
+    }
+
+    func midpoint(for index: Int, in rect: CGRect) -> CGPoint {
+        let (start, end) = angles(for: index)
+        let mid = (start + end) / 2
+        return CGPoint(x: rect.midX + cos(mid) * labelRadius, y: rect.midY - sin(mid) * labelRadius)
+    }
+
+    func index(at offset: CGPoint) -> Int? {
+        guard count > 0 else { return nil }
+        let distance = sqrt(offset.x * offset.x + offset.y * offset.y)
+        guard distance >= innerRadius, distance <= outerRadius + 24 else { return nil }
+        var angle = atan2(offset.y, offset.x)
+        if angle < 0 { angle += 2 * .pi }
+        var relative = CGFloat.pi / 2 + slice / 2 - angle
+        while relative < 0 { relative += 2 * .pi }
+        while relative >= 2 * .pi { relative -= 2 * .pi }
+        return min(count - 1, Int(relative / slice))
+    }
+}
+
+struct WedgeShape: Shape {
+    var geometry: RadialGeometry
+    var index: Int
+
+    func path(in rect: CGRect) -> Path {
+        let c = CGPoint(x: rect.midX, y: rect.midY)
+        let (a0, a1) = geometry.angles(for: index)
+        let r0 = geometry.innerRadius
+        let r1 = geometry.outerRadius
+        let k = geometry.corner
+        let half = geometry.gap / 2
+        let phiOuter = asin((k + half) / (r1 - k))
+        let phiInner = asin((k + half) / (r0 + k))
+
+        func point(_ radius: CGFloat, _ angle: CGFloat) -> CGPoint {
+            CGPoint(x: c.x + cos(angle) * radius, y: c.y - sin(angle) * radius)
         }
-        #else
-        glass = RadialBackdrop.material()
-        #endif
-        super.init(frame: frameRect)
-        wantsLayer = true
-        layer?.cornerRadius = frameRect.width / 2
-        layer?.masksToBounds = true
-        glass.frame = bounds
-        glass.autoresizingMask = [.width, .height]
-        addSubview(glass)
-    }
+        func normal(_ angle: CGFloat, inward: Bool) -> CGVector {
+            inward ? CGVector(dx: sin(angle), dy: -cos(angle)) : CGVector(dx: -sin(angle), dy: cos(angle))
+        }
+        func offset(_ p: CGPoint, _ v: CGVector, _ distance: CGFloat) -> CGPoint {
+            CGPoint(x: p.x + v.dx * distance, y: p.y - v.dy * distance)
+        }
+        func arc(_ path: inout Path, center: CGPoint, radius: CGFloat, from: CGPoint, to: CGPoint) {
+            let s = atan2(from.y - center.y, from.x - center.x)
+            let e = atan2(to.y - center.y, to.x - center.x)
+            path.addArc(center: center, radius: radius, startAngle: .radians(s), endAngle: .radians(e), clockwise: true)
+        }
 
-    required init?(coder: NSCoder) { fatalError("Not supported") }
+        let outerEndCenter = point(r1 - k, a1 - phiOuter)
+        let outerEndTangent = offset(outerEndCenter, normal(a1, inward: true), -k)
+        let innerEndCenter = point(r0 + k, a1 - phiInner)
+        let innerEndTangent = offset(innerEndCenter, normal(a1, inward: true), -k)
+        let innerStartCenter = point(r0 + k, a0 + phiInner)
+        let innerStartTangent = offset(innerStartCenter, normal(a0, inward: false), -k)
+        let outerStartCenter = point(r1 - k, a0 + phiOuter)
+        let outerStartTangent = offset(outerStartCenter, normal(a0, inward: false), -k)
 
-    private static func material() -> NSView {
-        let view = NSVisualEffectView()
-        view.material = .popover
-        view.blendingMode = .behindWindow
-        view.state = .active
-        view.appearance = NSAppearance(named: .aqua)
-        return view
+        var path = Path()
+        path.move(to: point(r1, a0 + phiOuter))
+        path.addArc(center: c, radius: r1, startAngle: .radians(-(a0 + phiOuter)), endAngle: .radians(-(a1 - phiOuter)), clockwise: true)
+        arc(&path, center: outerEndCenter, radius: k, from: point(r1, a1 - phiOuter), to: outerEndTangent)
+        path.addLine(to: innerEndTangent)
+        arc(&path, center: innerEndCenter, radius: k, from: innerEndTangent, to: point(r0, a1 - phiInner))
+        path.addArc(center: c, radius: r0, startAngle: .radians(-(a1 - phiInner)), endAngle: .radians(-(a0 + phiInner)), clockwise: false)
+        arc(&path, center: innerStartCenter, radius: k, from: point(r0, a0 + phiInner), to: innerStartTangent)
+        path.addLine(to: outerStartTangent)
+        arc(&path, center: outerStartCenter, radius: k, from: outerStartTangent, to: point(r1, a0 + phiOuter))
+        path.closeSubpath()
+        return path
     }
 }
 
-final class RadialCanvas: NSView {
-    weak var owner: RadialView?
+struct RadialWheelView: View {
+    var items: [RadialItem]
+    var highlighted: Int?
+    var title: String
+    var emptyMessage: String
+    var emptyDetail: String
+    var geometry: RadialGeometry
 
-    override var isFlipped: Bool { false }
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
-
-    override func draw(_ dirtyRect: NSRect) {
-        owner?.render()
+    var body: some View {
+        GlassEffectContainer(spacing: 8) {
+            ZStack {
+                if items.isEmpty {
+                    empty
+                } else {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                        wedge(item, index: index)
+                    }
+                    pill
+                }
+            }
+        }
+        .frame(width: geometry.outerRadius * 2 + 40, height: geometry.outerRadius * 2 + 40)
     }
+
+    private func wedge(_ item: RadialItem, index: Int) -> some View {
+        let shape = WedgeShape(geometry: geometry, index: index)
+        let selected = highlighted == index
+        return GeometryReader { proxy in
+            let rect = CGRect(origin: .zero, size: proxy.size)
+            let mid = geometry.midpoint(for: index, in: rect)
+            Color.clear
+                .glassEffect(selected ? .regular.tint(Theme.accent) : .regular, in: shape)
+                .overlay(alignment: .topLeading) {
+                    label(item, selected: selected)
+                        .frame(width: geometry.labelWidth)
+                        .position(mid)
+                }
+        }
+        .animation(.easeOut(duration: 0.12), value: highlighted)
+    }
+
+    private func label(_ item: RadialItem, selected: Bool) -> some View {
+        let dense = items.count > 8
+        return VStack(spacing: dense ? 3 : 5) {
+            Image(systemName: item.symbol)
+                .font(.system(size: dense ? 16 : 20, weight: .medium))
+                .symbolRenderingMode(.monochrome)
+            Text(item.label)
+                .font(.system(size: dense ? 10 : 11.5, weight: .bold, design: .rounded))
+                .kerning(0.6)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .foregroundStyle(selected ? Color.white : Color.primary)
+        .contentTransition(.identity)
+    }
+
+    private var pill: some View {
+        Text(title)
+            .font(.system(size: 14, weight: .semibold, design: .rounded))
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .padding(.horizontal, 16)
+            .frame(height: 36)
+            .frame(maxWidth: geometry.innerRadius * 2 - 20)
+            .glassEffect(.regular, in: Capsule())
+    }
+
+    private var empty: some View {
+        VStack(spacing: 3) {
+            Text(emptyMessage)
+                .font(.system(size: 14, weight: .semibold))
+            if !emptyDetail.isEmpty {
+                Text(emptyDetail)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 12)
+        .frame(maxWidth: geometry.outerRadius * 2)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+final class PassthroughHostingView<Content: View>: NSHostingView<Content> {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 final class RadialView: NSView {
-    var items: [RadialItem] = [] { didSet { needsLayout = true; canvas.needsDisplay = true } }
-    var emptyMessage = "No conversions available"
-    var subtitle = ""
-    var center: NSPoint = .zero { didSet { needsLayout = true; canvas.needsDisplay = true } }
-    var accent = Theme.accentNS
+    var items: [RadialItem] = [] { didSet { refresh() } }
+    var emptyMessage = "No conversions available" { didSet { refresh() } }
+    var subtitle = "" { didSet { refresh() } }
+    var center: NSPoint = .zero { didSet { needsLayout = true } }
     var onSelect: ((RadialItem) -> Void)?
     var onCancel: (() -> Void)?
     var interactive = false
-    var advancedMode = false { didSet { canvas.needsDisplay = true } }
+    var advancedMode = false { didSet { refresh() } }
 
-    private(set) var highlighted: Int? { didSet { if oldValue != highlighted { canvas.needsDisplay = true } } }
+    private(set) var highlighted: Int? { didSet { if oldValue != highlighted { refresh() } } }
     private var trackingArea: NSTrackingArea?
-    private let backdrop: RadialBackdrop
-    private let canvas = RadialCanvas(frame: .zero)
+    private let host: PassthroughHostingView<RadialWheelView>
 
-    let innerRadius: CGFloat = 58
-    let outerRadius: CGFloat = 142
-    let discRadius: CGFloat = 156
-    private let ink = NSColor(srgbRed: 0.11, green: 0.11, blue: 0.12, alpha: 1)
-    private let muted = NSColor(srgbRed: 0.50, green: 0.51, blue: 0.54, alpha: 1)
+    let discRadius: CGFloat = 170
+
+    private var geometry: RadialGeometry { RadialGeometry(count: items.count) }
 
     override init(frame frameRect: NSRect) {
-        backdrop = RadialBackdrop(frame: NSRect(x: 0, y: 0, width: discRadius * 2, height: discRadius * 2))
+        host = PassthroughHostingView(rootView: RadialWheelView(items: [], highlighted: nil, title: "", emptyMessage: "", emptyDetail: "", geometry: RadialGeometry(count: 0)))
         super.init(frame: frameRect)
         registerForDraggedTypes([.fileURL])
         wantsLayer = true
-        addSubview(backdrop)
-        canvas.owner = self
-        canvas.frame = bounds
-        canvas.autoresizingMask = [.width, .height]
-        addSubview(canvas)
-    }
-
-    override func layout() {
-        super.layout()
-        backdrop.frame = NSRect(x: center.x - discRadius, y: center.y - discRadius, width: discRadius * 2, height: discRadius * 2)
-        backdrop.isHidden = items.isEmpty
-    }
-
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        bounds.contains(point) ? self : nil
+        host.sizingOptions = []
+        addSubview(host)
     }
 
     required init?(coder: NSCoder) { fatalError("Not supported") }
 
     override var acceptsFirstResponder: Bool { true }
     override var isFlipped: Bool { false }
+
+    override func layout() {
+        super.layout()
+        host.frame = NSRect(x: center.x - discRadius, y: center.y - discRadius, width: discRadius * 2, height: discRadius * 2)
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        bounds.contains(point) ? self : nil
+    }
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
@@ -133,221 +267,25 @@ final class RadialView: NSView {
         trackingArea = area
     }
 
-    func index(at point: NSPoint) -> Int? {
-        guard !items.isEmpty else { return nil }
-        let dx = point.x - center.x
-        let dy = point.y - center.y
-        let distance = sqrt(dx * dx + dy * dy)
-        guard distance >= innerRadius, distance <= outerRadius + 24 else { return nil }
-        var angle = atan2(dy, dx)
-        if angle < 0 { angle += 2 * .pi }
-        let slice = 2 * .pi / CGFloat(items.count)
-        var relative = CGFloat.pi / 2 + slice / 2 - angle
-        while relative < 0 { relative += 2 * .pi }
-        while relative >= 2 * .pi { relative -= 2 * .pi }
-        return min(items.count - 1, Int(relative / slice))
-    }
-
-    private func angles(for index: Int) -> (start: CGFloat, end: CGFloat) {
-        let slice = 2 * .pi / CGFloat(items.count)
-        let top = CGFloat.pi / 2
-        let end = top - slice * CGFloat(index) + slice / 2
-        let start = end - slice
-        return (start, end)
-    }
-
-    func render() {
-        guard let context = NSGraphicsContext.current?.cgContext else { return }
-        context.clear(bounds)
-
-        let count = items.count
-        if count == 0 {
-            drawEmpty()
-            return
-        }
-
-        drawDisc(context)
-
-        let slice = 2 * CGFloat.pi / CGFloat(count)
-        let corner: CGFloat = count > 6 ? 9 : 12
-        let gap: CGFloat = 5
-        for index in 0..<count {
-            let (start, end) = angles(for: index)
-            let isHighlighted = highlighted == index
-            let path = petal(start: start, end: end, gap: gap, corner: corner)
-
-            context.saveGState()
-            if isHighlighted {
-                context.setShadow(offset: CGSize(width: 0, height: -3), blur: 14, color: accent.withAlphaComponent(0.45).cgColor)
-                accent.setFill()
-                accent.setStroke()
-            } else {
-                context.setShadow(offset: CGSize(width: 0, height: -1), blur: 6, color: NSColor.black.withAlphaComponent(0.06).cgColor)
-                context.setAlpha(Theme.supportsLiquidGlass ? 0.72 : 0.9)
-                NSColor.white.setFill()
-                NSColor.white.setStroke()
-            }
-            context.beginTransparencyLayer(auxiliaryInfo: nil)
-            path.fill()
-            path.lineWidth = corner * 2
-            path.lineJoinStyle = .round
-            path.stroke()
-            context.endTransparencyLayer()
-            context.restoreGState()
-
-            if !isHighlighted {
-                context.saveGState()
-                path.addClip()
-                let gradient = NSGradient(colors: [NSColor.white.withAlphaComponent(0.9), NSColor.white.withAlphaComponent(0.0)])
-                let mid = (start + end) / 2
-                let radius = (innerRadius + outerRadius) / 2
-                let point = NSPoint(x: center.x + cos(mid) * radius, y: center.y + sin(mid) * radius)
-                gradient?.draw(fromCenter: point, radius: 0, toCenter: point, radius: (outerRadius - innerRadius) * 0.55, options: [])
-                context.restoreGState()
-            }
-
-            drawLabel(items[index], start: start, end: end, highlighted: isHighlighted, count: count, slice: slice)
-        }
-
+    private func refresh() {
         let title: String
         if let highlighted, highlighted < items.count {
             title = items[highlighted].label
         } else {
             title = items.count == 1 ? items[0].label : (advancedMode ? "TOOLS" : "CONVERT")
         }
-        drawPill(title)
-
-        let caption = (highlighted.flatMap { $0 < items.count ? items[$0].detail : nil }) ?? subtitle
-        drawCaption(caption)
+        host.rootView = RadialWheelView(
+            items: items,
+            highlighted: highlighted,
+            title: title,
+            emptyMessage: emptyMessage,
+            emptyDetail: subtitle,
+            geometry: geometry
+        )
     }
 
-    private func petal(start: CGFloat, end: CGFloat, gap: CGFloat, corner: CGFloat) -> NSBezierPath {
-        let inner = innerRadius + gap / 2 + corner
-        let outer = outerRadius - gap / 2 - corner
-        let innerShift = (gap / 2 + corner) / inner
-        let outerShift = (gap / 2 + corner) / outer
-        let path = NSBezierPath()
-        path.appendArc(withCenter: center, radius: outer, startAngle: (start + outerShift) * 180 / .pi, endAngle: (end - outerShift) * 180 / .pi)
-        path.appendArc(withCenter: center, radius: inner, startAngle: (end - innerShift) * 180 / .pi, endAngle: (start + innerShift) * 180 / .pi, clockwise: true)
-        path.close()
-        return path
-    }
-
-    private func drawDisc(_ context: CGContext) {
-        let disc = NSBezierPath(ovalIn: NSRect(x: center.x - discRadius, y: center.y - discRadius, width: discRadius * 2, height: discRadius * 2))
-        context.saveGState()
-        context.setShadow(offset: CGSize(width: 0, height: -10), blur: 34, color: NSColor.black.withAlphaComponent(0.20).cgColor)
-        NSColor(srgbRed: 0.91, green: 0.915, blue: 0.93, alpha: Theme.supportsLiquidGlass ? 0.55 : 0.94).setFill()
-        disc.fill()
-        context.restoreGState()
-        NSColor.white.withAlphaComponent(0.8).setStroke()
-        disc.lineWidth = 1
-        disc.stroke()
-
-        let ring = NSBezierPath(ovalIn: NSRect(x: center.x - innerRadius, y: center.y - innerRadius, width: innerRadius * 2, height: innerRadius * 2))
-        NSColor(srgbRed: 0.93, green: 0.935, blue: 0.95, alpha: 0.9).setFill()
-        ring.fill()
-    }
-
-    private func drawLabel(_ item: RadialItem, start: CGFloat, end: CGFloat, highlighted: Bool, count: Int, slice: CGFloat) {
-        let mid = (start + end) / 2
-        let labelRadius = (innerRadius + outerRadius) / 2 + (item.icon == nil ? 0 : 2)
-        let labelCenter = NSPoint(x: center.x + cos(mid) * labelRadius, y: center.y + sin(mid) * labelRadius)
-        let fontSize: CGFloat
-        switch count {
-        case ...6: fontSize = item.icon == nil ? 17 : 13
-        case 7...8: fontSize = item.icon == nil ? 15 : 12
-        case 9...10: fontSize = item.icon == nil ? 13 : 10.5
-        default: fontSize = item.icon == nil ? 11 : 9.5
-        }
-        let color = highlighted ? NSColor.white : ink
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: fontSize, weight: .semibold),
-            .foregroundColor: color,
-            .kern: item.icon == nil ? 0.2 : 0.4,
-        ]
-        let text = NSAttributedString(string: item.label, attributes: attributes)
-        let size = text.size()
-        var origin = NSPoint(x: labelCenter.x - size.width / 2, y: labelCenter.y - size.height / 2)
-        if let icon = item.icon {
-            let iconSize: CGFloat = count > 8 ? 18 : 24
-            icon.draw(in: NSRect(x: labelCenter.x - iconSize / 2, y: labelCenter.y - 1, width: iconSize, height: iconSize), color: color)
-            origin.y = labelCenter.y - size.height - 1
-        }
-        text.draw(at: origin)
-    }
-
-    private func drawPill(_ title: String) {
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 15, weight: .semibold),
-            .foregroundColor: ink,
-            .kern: 0.2,
-        ]
-        let text = NSAttributedString(string: title, attributes: attributes)
-        var size = text.size()
-        size.width = min(size.width, innerRadius * 2 - 28)
-        let pillWidth = max(size.width + 30, 72)
-        let pillHeight: CGFloat = 36
-        let rect = NSRect(x: center.x - pillWidth / 2, y: center.y - pillHeight / 2, width: pillWidth, height: pillHeight)
-        let pill = NSBezierPath(roundedRect: rect, xRadius: pillHeight / 2, yRadius: pillHeight / 2)
-        NSGraphicsContext.current?.cgContext.saveGState()
-        NSGraphicsContext.current?.cgContext.setShadow(offset: CGSize(width: 0, height: -2), blur: 8, color: NSColor.black.withAlphaComponent(0.10).cgColor)
-        NSColor.white.setFill()
-        pill.fill()
-        NSGraphicsContext.current?.cgContext.restoreGState()
-        text.draw(with: NSRect(x: rect.midX - size.width / 2, y: rect.midY - size.height / 2, width: size.width, height: size.height), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
-    }
-
-    private func drawCaption(_ caption: String) {
-        guard !caption.isEmpty else { return }
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .center
-        paragraph.lineBreakMode = .byTruncatingMiddle
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 15, weight: .medium),
-            .foregroundColor: muted,
-            .paragraphStyle: paragraph,
-        ]
-        let text = NSAttributedString(string: caption, attributes: attributes)
-        let size = text.size()
-        let width = min(size.width, discRadius * 2.4)
-        let rect = NSRect(x: center.x - width / 2, y: center.y - discRadius - 12 - size.height, width: width, height: size.height)
-        let context = NSGraphicsContext.current?.cgContext
-        context?.saveGState()
-        context?.setShadow(offset: .zero, blur: 6, color: NSColor.white.withAlphaComponent(0.9).cgColor)
-        text.draw(with: rect, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
-        context?.restoreGState()
-    }
-
-    private func drawEmpty() {
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .center
-        let title = NSAttributedString(string: emptyMessage, attributes: [
-            .font: NSFont.systemFont(ofSize: 14, weight: .semibold),
-            .foregroundColor: ink,
-            .paragraphStyle: paragraph,
-        ])
-        let detail = NSAttributedString(string: subtitle, attributes: [
-            .font: NSFont.systemFont(ofSize: 12, weight: .medium),
-            .foregroundColor: muted,
-            .paragraphStyle: paragraph,
-        ])
-        let width = max(title.size().width, detail.size().width) + 44
-        let height: CGFloat = subtitle.isEmpty ? 44 : 62
-        let rect = NSRect(x: center.x - width / 2, y: center.y - height / 2, width: width, height: height)
-        let pill = NSBezierPath(roundedRect: rect, xRadius: 18, yRadius: 18)
-        let context = NSGraphicsContext.current?.cgContext
-        context?.saveGState()
-        context?.setShadow(offset: CGSize(width: 0, height: -6), blur: 20, color: NSColor.black.withAlphaComponent(0.18).cgColor)
-        NSColor(srgbRed: 0.96, green: 0.96, blue: 0.97, alpha: 0.97).setFill()
-        pill.fill()
-        context?.restoreGState()
-        var y = rect.maxY - 12
-        title.draw(with: NSRect(x: rect.minX, y: y - title.size().height, width: rect.width, height: title.size().height), options: [.usesLineFragmentOrigin])
-        y -= title.size().height + 4
-        if !subtitle.isEmpty {
-            detail.draw(with: NSRect(x: rect.minX, y: y - detail.size().height, width: rect.width, height: detail.size().height), options: [.usesLineFragmentOrigin])
-        }
+    func index(at point: NSPoint) -> Int? {
+        geometry.index(at: CGPoint(x: point.x - center.x, y: point.y - center.y))
     }
 
     func updateHighlight(forWindowPoint point: NSPoint) {
@@ -426,18 +364,5 @@ final class RadialView: NSView {
 
     func highlight(_ index: Int) {
         highlighted = items.indices.contains(index) ? index : nil
-    }
-}
-
-extension NSImage {
-    func tinted(_ color: NSColor) -> NSImage {
-        let image = NSImage(size: size, flipped: false) { rect in
-            self.draw(in: rect)
-            color.set()
-            rect.fill(using: .sourceAtop)
-            return true
-        }
-        image.isTemplate = false
-        return image
     }
 }

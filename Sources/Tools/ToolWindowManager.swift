@@ -37,18 +37,11 @@ final class ToolWindowManager: NSObject, NSWindowDelegate {
             .environmentObject(AppSettings.shared)
         let controller = NSHostingController(rootView: root)
         let window = NSWindow(contentViewController: controller)
-        window.title = "\(tool.title) — \(files.count == 1 ? files[0].lastPathComponent : "\(files.count) files")"
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.isMovableByWindowBackground = true
-        window.appearance = NSAppearance(named: .aqua)
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.hasShadow = true
-        for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
-            window.standardWindowButton(button)?.isHidden = true
-        }
+        window.title = tool.title
+        window.subtitle = files.count == 1 ? files[0].lastPathComponent : "\(files.count) files"
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+        window.toolbarStyle = .unified
+        window.isMovableByWindowBackground = false
         window.isReleasedWhenClosed = false
         window.setContentSize(Self.preferredSize(for: tool))
         window.minSize = NSSize(width: 560, height: 420)
@@ -72,12 +65,16 @@ final class ToolWindowManager: NSObject, NSWindowDelegate {
 
     static func preferredSize(for tool: ToolID) -> NSSize {
         switch tool {
-        case .compress, .editMetadata, .resizeImage, .rotateImage, .createPDF, .mergePDF, .splitPDF, .audioChannels, .normalizeAudio:
-            return NSSize(width: 640, height: 520)
+        case .compress:
+            return NSSize(width: 640, height: 640)
+        case .resizeImage, .createPDF, .mergePDF, .splitPDF:
+            return NSSize(width: 720, height: 560)
+        case .editMetadata, .rotateImage, .audioChannels, .normalizeAudio:
+            return NSSize(width: 820, height: 600)
         case .organizePDF, .createCollage, .joinVideos:
-            return NSSize(width: 900, height: 640)
+            return NSSize(width: 960, height: 660)
         default:
-            return NSSize(width: 960, height: 680)
+            return NSSize(width: 1040, height: 700)
         }
     }
 }
@@ -132,76 +129,34 @@ struct WindowChrome<Content: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ZStack {
-                Text(session.tool.title)
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(Theme.ink)
-                HStack {
-                    Button { ToolWindowManager.shared.close(session) } label: { Icon(.x, size: 14) }
-                        .buttonStyle(CircleIconButtonStyle())
-                        .keyboardShortcut(.cancelAction)
-                        .help("Close")
-                    Spacer()
-                }
-            }
-            .padding(.horizontal, 18)
-            .frame(height: 60)
-            Rectangle().fill(Theme.hairline).frame(height: 1)
-
             content()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            Rectangle().fill(Theme.hairline).frame(height: 1)
-            HStack(spacing: 10) {
-                Icon(session.tool.icon, size: 16)
-                    .foregroundStyle(Theme.inkSecondary)
-                Text(fileLabel)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Theme.inkSecondary)
+            Divider()
+            HStack(spacing: 12) {
+                Label {
+                    Text(fileLabel)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                } icon: {
+                    Image(systemName: session.tool.symbol)
+                }
+                .font(.callout)
+                .foregroundStyle(.secondary)
                 Spacer()
                 Button("Cancel") { ToolWindowManager.shared.close(session) }
-                    .buttonStyle(QuietButtonStyle())
+                    .keyboardShortcut(.cancelAction)
                 Button(saveTitle) { onSave() }
-                    .buttonStyle(PrimaryButtonStyle())
+                    .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
                     .disabled(!saveEnabled)
             }
-            .padding(.horizontal, 18)
+            .controlSize(.large)
+            .padding(.horizontal, 20)
             .padding(.vertical, 14)
+            .background(.bar)
         }
-        .background(WindowBackground())
-        .preferredColorScheme(.light)
-    }
-}
-
-struct WindowBackground: View {
-    var body: some View {
-        #if compiler(>=6.2)
-        if #available(macOS 26.0, *) {
-            Color.clear
-                .glassEffect(.regular.tint(Color.white.opacity(0.55)), in: RoundedRectangle(cornerRadius: Theme.windowCorner, style: .continuous))
-                .ignoresSafeArea()
-        } else {
-            legacy
-        }
-        #else
-        legacy
-        #endif
-    }
-
-    private var legacy: some View {
-        ZStack {
-            Rectangle().fill(.regularMaterial)
-            Color(nsColor: NSColor(srgbRed: 0.965, green: 0.965, blue: 0.97, alpha: 0.86))
-        }
-        .clipShape(RoundedRectangle(cornerRadius: Theme.windowCorner, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: Theme.windowCorner, style: .continuous)
-                .strokeBorder(Color.black.opacity(0.10), lineWidth: 1)
-        }
-        .ignoresSafeArea()
+        .tint(Theme.accent)
     }
 }
 
@@ -215,24 +170,20 @@ struct ToolShell<Content: View, Sidebar: View>: View {
 
     var body: some View {
         WindowChrome(session: session, saveTitle: saveTitle, saveEnabled: saveEnabled, onSave: onSave) {
-            HStack(spacing: 14) {
+            HStack(spacing: 16) {
                 content()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.black.opacity(0.04))
                     .clipShape(RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous)
-                            .strokeBorder(Theme.cardStroke, lineWidth: 1)
-                    }
+                    .card()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
                         sidebar()
                     }
-                    .padding(.trailing, 2)
                 }
-                .frame(width: 292)
+                .scrollIndicators(.automatic)
+                .frame(width: 320)
             }
-            .padding(18)
+            .padding(20)
         }
     }
 }
@@ -253,6 +204,7 @@ struct FormShell<Content: View>: View {
                 .padding(24)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .scrollIndicators(.automatic)
         }
     }
 }
@@ -264,8 +216,7 @@ struct SidebarSection<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Theme.ink)
+                .font(.headline)
             content()
         }
         .padding(14)
@@ -281,8 +232,7 @@ struct FormRow<Content: View>: View {
     var body: some View {
         HStack(spacing: 16) {
             Text(title)
-                .font(.system(size: 17, weight: .regular))
-                .foregroundStyle(Theme.ink)
+                .font(.body)
             content()
             Spacer(minLength: 0)
         }
@@ -296,8 +246,7 @@ struct FormHeading: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 19, weight: .bold))
-            .foregroundStyle(Theme.ink)
+            .font(.title3.weight(.semibold))
     }
 }
 
@@ -308,8 +257,8 @@ struct FormHint: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 14))
-            .foregroundStyle(Theme.inkSecondary)
+            .font(.callout)
+            .foregroundStyle(.secondary)
     }
 }
 

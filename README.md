@@ -17,7 +17,7 @@ Satsuma lives in the menu bar (no Dock icon). The status item shows job progress
 
 ## Look and feel
 
-The radial menu and tool windows follow Tangerine's light, rounded style: a translucent wheel with pale segments, an orange highlight, a white centre pill naming the selection, and card-based tool sheets with segmented controls. On macOS 26 and later the wheel and window backgrounds use Liquid Glass (`NSGlassEffectView` / `glassEffect`); on macOS 13–15 they fall back to `NSVisualEffectView` materials, so one binary runs everywhere. All interface icons come from [reicon](https://github.com/dqev/reicon), compiled into `Sources/UI/Reicon.swift` as template `NSImage`s so no JavaScript tooling is needed at build time.
+The radial menu is built from Liquid Glass wedges (`glassEffect` on a custom rounded annular-sector `Shape`, grouped in a `GlassEffectContainer`), with the selected wedge tinted orange and a glass centre pill naming the selection. Tool windows use the stock macOS title bar (title + file subtitle), card-grouped content, standard AppKit/SwiftUI controls with an orange accent, overlay scrollbars where content is taller than the window, and a bottom Cancel/Save bar. Every icon is an SF Symbol. Light and dark appearance follow the system, or can be forced in Settings.
 
 ## Conversions
 
@@ -33,7 +33,7 @@ The radial menu and tool windows follow Tangerine's light, rounded style: a tran
 | SRT, VTT | VTT/SRT, TXT |
 | ZIP, TAR, GZIP, RAR | ZIP, TAR, GZIP (RAR can be read, not written) |
 
-Native frameworks are used first: ImageIO/Core Graphics for images, AVFoundation for audio and video, PDFKit/Core Text for documents, Foundation for archives. `ffmpeg` is used only for formats Apple's frameworks cannot encode or decode (WebM/VP9, MKV, AVI, WMV, OGG, Opus, FLAC output, WMA, MP3 encoding, AVIF on macOS 13, animated GIF export). `unar`/`bsdtar` extracts RAR.
+Native frameworks are used first: ImageIO/Core Graphics for images, AVFoundation for audio and video, PDFKit/Core Text for documents, Foundation for archives. `ffmpeg` is used only for formats Apple's frameworks cannot encode or decode (WebM/VP9, MKV, AVI, WMV, OGG, Opus, FLAC output, WMA, MP3 encoding, animated GIF export). `unar`/`bsdtar` extracts RAR.
 
 ## Advanced tools
 
@@ -47,7 +47,7 @@ Native frameworks are used first: ImageIO/Core Graphics for images, AVFoundation
 
 ## Requirements
 
-- Apple silicon Mac running macOS 13 or later.
+- Apple silicon Mac running macOS 26 or later.
 - [Brisk](https://github.com/plyght/brisk) and the Xcode command-line tools (`swiftc`) to build.
 - Optional: `ffmpeg` for the non-native formats listed above (`wax install ffmpeg`), `unar` for RAR extraction (`wax install unar`). Satsuma looks in `PATH`, `/opt/homebrew/bin` and `/usr/local/bin`; a custom path can be set in Settings.
 
@@ -73,7 +73,7 @@ scripts/check.sh --fix  # apply swift-format fixes first
 
 ## Verification status
 
-The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on `macos-14` (material fallback) and `macos-26` (Liquid Glass) runners: `brisk build`, `brisk test` (conversion matrix, naming, subtitle, PDF-range, tool-applicability, compression and timecode logic in `Tests/SatsumaTests.swift`), then launches the app with `SATSUMA_SCREENSHOTS=<dir>` so `Sources/App/ScreenshotDriver.swift` generates sample media, opens the radial menu and all 25 tool windows, and captures them with `screencapture`. Screenshots and the release `Satsuma.app` zip are uploaded as workflow artifacts. Actual Finder Shift-drag and the Accessibility prompt cannot be exercised on a headless runner and still need a manual check on a Mac.
+The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on the `macos-26` and `xcode-27` (macOS 27 / Xcode 27 SDK, public preview) runners: `brisk build`, `brisk test` (conversion matrix, naming, subtitle, PDF-range, tool-applicability, compression and timecode logic in `Tests/SatsumaTests.swift`), then launches the app with `SATSUMA_SCREENSHOTS=<dir>` so `Sources/App/ScreenshotDriver.swift` generates sample media, opens the radial menu and all 25 tool windows, and captures them with `screencapture`. Screenshots and the release `Satsuma.app` zip are uploaded as workflow artifacts. Actual Finder Shift-drag and the Accessibility prompt cannot be exercised on a headless runner and still need a manual check on a Mac.
 
 ## Project layout
 

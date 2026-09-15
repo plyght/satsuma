@@ -48,7 +48,7 @@ struct VideoSnapshotsToolView: View {
                                         } else {
                                             RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.2)).frame(width: 128, height: 72)
                                         }
-                                        Button { frames.removeAll { $0.id == snap.id } } label: { Icon(.xCircle, size: 16) }
+                                        Button { frames.removeAll { $0.id == snap.id } } label: { Image(systemName: "xmark.circle.fill") }
                                             .buttonStyle(.borderless).padding(3)
                                     }
                                     Text(TimeFormatter.clock(snap.time)).font(.caption2.monospacedDigit())
@@ -207,7 +207,7 @@ struct RedactVideoToolView: View {
                             }
                         }
                         Spacer()
-                        Button { remove(overlay.id) } label: { Icon(.trash, size: 13) }.buttonStyle(.borderless)
+                        Button { remove(overlay.id) } label: { Image(systemName: "trash") }.buttonStyle(.borderless)
                     }
                     .contentShape(Rectangle())
                     .onTapGesture { selected = overlay.id }

@@ -210,9 +210,9 @@ struct JobRowView: View {
                 Spacer()
                 switch job.status {
                 case .done:
-                    Icon(.checkCircle, size: 16).foregroundStyle(.green)
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                 case .failed:
-                    Button(action: dismiss) { Icon(.xCircle, size: 16).foregroundStyle(.red) }.buttonStyle(.plain)
+                    Button(action: dismiss) { Image(systemName: "xmark.circle.fill").foregroundStyle(.red) }.buttonStyle(.plain)
                 default:
                     ProgressView().controlSize(.small)
                 }

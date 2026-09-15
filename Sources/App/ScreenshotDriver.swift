@@ -85,16 +85,32 @@ enum ScreenshotDriver {
             .splitPDF: [pdf],
         ]
 
-        radial.presentPicker(for: [photo], advanced: false)
-        radial.highlight(5)
-        try await Task.sleep(nanoseconds: 1_500_000_000)
-        try await screencapture(["-x", directory.appendingPathComponent("radial-convert.png").path])
-        radial.hide()
-        radial.presentPicker(for: [photo], advanced: true)
-        radial.highlight(4)
-        try await Task.sleep(nanoseconds: 1_000_000_000)
-        try await screencapture(["-x", directory.appendingPathComponent("radial-tools.png").path])
-        radial.hide()
+        for mode in [AppearanceMode.light, .dark] {
+            NSApp.appearance = mode.appearance
+            let suffix = mode == .light ? "" : "-dark"
+            radial.presentPicker(for: [photo], advanced: false)
+            radial.highlight(5)
+            try await Task.sleep(nanoseconds: 1_500_000_000)
+            try await screencapture(["-x", directory.appendingPathComponent("radial-convert\(suffix).png").path])
+            radial.hide()
+            radial.presentPicker(for: [photo], advanced: true)
+            radial.highlight(4)
+            try await Task.sleep(nanoseconds: 1_000_000_000)
+            try await screencapture(["-x", directory.appendingPathComponent("radial-tools\(suffix).png").path])
+            radial.hide()
+        }
+
+        if let files = inputs[.compress] {
+            NSApp.appearance = AppearanceMode.dark.appearance
+            ToolWindowManager.shared.open(.compress, files: files)
+            try await Task.sleep(nanoseconds: 2_500_000_000)
+            for window in ToolWindowManager.shared.openWindows {
+                try await screencapture("tool-compress-dark", ["-x", "-o", "-l", "\(window.windowNumber)", directory.appendingPathComponent("tool-compress-dark.png").path])
+            }
+            ToolWindowManager.shared.closeAll()
+            try await Task.sleep(nanoseconds: 300_000_000)
+        }
+        NSApp.appearance = AppearanceMode.light.appearance
 
         for tool in ToolID.allCases {
             guard let files = inputs[tool] else { continue }

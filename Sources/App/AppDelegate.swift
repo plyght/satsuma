@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        AppSettings.shared.applyAppearance()
         installStatusItem()
         if ScreenshotDriver.isEnabled {
             ScreenshotDriver.run(radial: radial)
@@ -29,7 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func installStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = item.button {
-            button.image = MenuBarIcon.image
+            button.image = NSImage(systemSymbolName: "circle.hexagongrid.circle", accessibilityDescription: "Satsuma")
             button.toolTip = "Satsuma — hold Shift while dragging a file"
         }
         let menu = NSMenu()

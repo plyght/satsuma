@@ -9,6 +9,17 @@ enum FormatCategory: String, CaseIterable {
     case subtitle
     case archive
 
+    var symbol: String {
+        switch self {
+        case .image: return "photo"
+        case .audio: return "waveform"
+        case .video: return "film"
+        case .document: return "doc.text"
+        case .subtitle: return "captions.bubble"
+        case .archive: return "archivebox"
+        }
+    }
+
     var title: String {
         switch self {
         case .image: return "Image"

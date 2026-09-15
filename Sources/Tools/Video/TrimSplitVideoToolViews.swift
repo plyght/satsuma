@@ -117,8 +117,8 @@ struct SplitVideoToolView: View {
                         HStack {
                             Text(TimeFormatter.clock(point)).font(.callout.monospacedDigit())
                             Spacer()
-                            Button { media.seek(point) } label: { Icon(.forwardStep, size: 13) }
-                            Button { points.removeAll { $0 == point } } label: { Icon(.trash, size: 13) }
+                            Button { media.seek(point) } label: { Image(systemName: "forward.frame") }
+                            Button { points.removeAll { $0 == point } } label: { Image(systemName: "trash") }
                         }
                         .buttonStyle(.borderless)
                     }

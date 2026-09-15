@@ -91,33 +91,31 @@ enum ToolID: String, CaseIterable, Identifiable {
         }
     }
 
-    var icon: Reicon {
+    var symbol: String {
         switch self {
-        case .compress: return .compress
-        case .editMetadata: return .tagCross
-        case .editImage: return .sliders
-        case .frameImage: return .galleryAdd
-        case .cropImage: return .crop
-        case .cropVideo: return .crop2
-        case .redactImage: return .eyeOff
-        case .redactVideo: return .videoOff
-        case .resizeImage: return .maximize
-        case .rotateImage: return .arrowRotate
-        case .createPDF: return .filePdf
-        case .createCollage: return .layout
-        case .trimVideo: return .scissors
-        case .trimAudio: return .scissorsSquare
-        case .changeVideoSpeed: return .playbackSpeed
-        case .joinVideos: return .link
-        case .videoSnapshots: return .camera
-        case .splitVideo: return .videoCut
-        case .splitPDF: return .files
-        case .normalizeAudio: return .soundwave
-        case .audioToVideo: return .musicPlay
-        case .audioChannels: return .headphones
-        case .redactAudio: return .mute
-        case .mergePDF: return .docs
-        case .organizePDF: return .reorder
+        case .compress: return "arrow.down.right.and.arrow.up.left"
+        case .editMetadata: return "tag"
+        case .editImage: return "slider.horizontal.3"
+        case .frameImage: return "photo.artframe"
+        case .cropImage, .cropVideo: return "crop"
+        case .redactImage: return "eye.slash"
+        case .redactVideo: return "video.slash"
+        case .resizeImage: return "arrow.up.left.and.arrow.down.right"
+        case .rotateImage: return "rotate.right"
+        case .createPDF: return "doc.richtext"
+        case .createCollage: return "square.grid.2x2"
+        case .trimVideo, .trimAudio: return "scissors"
+        case .changeVideoSpeed: return "gauge.with.dots.needle.67percent"
+        case .joinVideos: return "link"
+        case .videoSnapshots: return "camera.viewfinder"
+        case .splitVideo: return "rectangle.split.2x1"
+        case .splitPDF: return "doc.on.doc"
+        case .normalizeAudio: return "waveform"
+        case .audioToVideo: return "waveform.and.magnifyingglass"
+        case .audioChannels: return "headphones"
+        case .redactAudio: return "speaker.slash"
+        case .mergePDF: return "doc.on.doc.fill"
+        case .organizePDF: return "rectangle.stack"
         }
     }
 

@@ -4,7 +4,7 @@ version = "0.1.0"
 
 [app]
 bundle_id = "lol.peril.satsuma"
-deployment_target = "13.0"
+deployment_target = "26.0"
 sources = "Sources"
 resources = ["Resources"]
 asset_catalogs = ["Assets.xcassets"]

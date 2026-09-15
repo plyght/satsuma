@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 struct TestFailure: Error, CustomStringConvertible {
@@ -199,15 +200,12 @@ struct SatsumaTests {
             try expectEqual(FFmpeg.timecode(0), "00:00:00.000")
         }
 
-        runner.test("reicon glyphs decode") {
-            for icon in Reicon.allCases {
-                let image = icon.image
-                try expect(image.isValid, "\(icon.rawValue) decodes")
-                try expect(image.size.width > 0, "\(icon.rawValue) has a size")
-                try expect(icon.svg.contains("viewBox=\"0 0 24 24\""), "\(icon.rawValue) uses the 24pt grid")
-            }
+        runner.test("sf symbols resolve") {
             for tool in ToolID.allCases {
-                try expect(tool.icon.image.isValid, "\(tool.rawValue) icon")
+                try expect(NSImage(systemSymbolName: tool.symbol, accessibilityDescription: nil) != nil, "\(tool.rawValue) symbol \(tool.symbol)")
+            }
+            for category in FormatCategory.allCases {
+                try expect(NSImage(systemSymbolName: category.symbol, accessibilityDescription: nil) != nil, "\(category.rawValue) symbol")
             }
         }
 
