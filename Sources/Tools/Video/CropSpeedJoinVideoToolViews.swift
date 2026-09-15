@@ -2,6 +2,7 @@ import AVFoundation
 import SwiftUI
 import UniformTypeIdentifiers
 
+@MainActor
 struct CropVideoToolView: View {
     let session: ToolSession
     @StateObject private var media: MediaController
@@ -104,6 +105,7 @@ struct CropVideoToolView: View {
     }
 }
 
+@MainActor
 struct VideoSpeedToolView: View {
     let session: ToolSession
     @StateObject private var media: MediaController
@@ -158,6 +160,7 @@ struct VideoSpeedToolView: View {
     }
 }
 
+@MainActor
 struct JoinVideosToolView: View {
     let session: ToolSession
     @State private var files: [URL]

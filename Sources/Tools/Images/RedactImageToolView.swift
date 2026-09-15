@@ -1,6 +1,7 @@
 import CoreImage
 import SwiftUI
 
+@MainActor
 struct RedactImageToolView: View {
     let session: ToolSession
     @StateObject private var document: ImageDocument

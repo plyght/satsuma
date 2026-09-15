@@ -2,6 +2,7 @@ import AVFoundation
 import SwiftUI
 import UniformTypeIdentifiers
 
+@MainActor
 struct TrimAudioToolView: View {
     let session: ToolSession
     @StateObject private var media: MediaController
@@ -64,6 +65,7 @@ struct TrimAudioToolView: View {
     }
 }
 
+@MainActor
 struct NormalizeAudioToolView: View {
     let session: ToolSession
     @StateObject private var media: MediaController
@@ -168,6 +170,7 @@ private struct LevelColumn: View {
     }
 }
 
+@MainActor
 struct AudioChannelsToolView: View {
     let session: ToolSession
     @StateObject private var media: MediaController
@@ -250,6 +253,7 @@ struct AudioChannelsToolView: View {
     }
 }
 
+@MainActor
 struct RedactAudioToolView: View {
     let session: ToolSession
     @StateObject private var media: MediaController
@@ -340,6 +344,7 @@ struct RedactAudioToolView: View {
     }
 }
 
+@MainActor
 struct AudioToVideoToolView: View {
     let session: ToolSession
     @StateObject private var media: MediaController

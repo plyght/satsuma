@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 struct ResizeImageToolView: View {
     let session: ToolSession
     @State private var mode: Mode = .longEdge
@@ -117,6 +118,7 @@ struct ResizeImageToolView: View {
     }
 }
 
+@MainActor
 struct RotateImageToolView: View {
     let session: ToolSession
     @StateObject private var document: ImageDocument

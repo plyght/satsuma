@@ -75,6 +75,7 @@ final class ThumbnailCache: ObservableObject {
     }
 }
 
+@MainActor
 struct CreatePDFToolView: View {
     let session: ToolSession
     @State private var files: [URL]
@@ -140,6 +141,7 @@ struct CreatePDFToolView: View {
     }
 }
 
+@MainActor
 struct CollageToolView: View {
     let session: ToolSession
     @State private var files: [URL]

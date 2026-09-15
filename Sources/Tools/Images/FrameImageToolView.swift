@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+@MainActor
 struct FrameImageToolView: View {
     let session: ToolSession
     @StateObject private var document: ImageDocument

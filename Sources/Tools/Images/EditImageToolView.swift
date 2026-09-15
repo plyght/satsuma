@@ -1,6 +1,7 @@
 import CoreImage
 import SwiftUI
 
+@MainActor
 struct EditImageToolView: View {
     let session: ToolSession
     @StateObject private var document: ImageDocument

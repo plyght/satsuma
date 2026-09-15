@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 
+@MainActor
 struct CropImageToolView: View {
     let session: ToolSession
     @StateObject private var document: ImageDocument

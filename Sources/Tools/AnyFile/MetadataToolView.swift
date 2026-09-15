@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct MetadataToolView: View {
     let session: ToolSession
     @State private var fields: [MetadataField] = []

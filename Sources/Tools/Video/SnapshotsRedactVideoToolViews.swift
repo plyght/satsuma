@@ -1,6 +1,7 @@
 import AVFoundation
 import SwiftUI
 
+@MainActor
 struct VideoSnapshotsToolView: View {
     let session: ToolSession
     @StateObject private var media: MediaController
@@ -129,6 +130,7 @@ struct VideoSnapshotsToolView: View {
     }
 }
 
+@MainActor
 struct RedactVideoToolView: View {
     let session: ToolSession
     @StateObject private var media: MediaController

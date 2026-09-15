@@ -3,6 +3,7 @@ import PDFKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+@MainActor
 struct MergePDFToolView: View {
     let session: ToolSession
     @State private var files: [URL]
@@ -44,6 +45,7 @@ struct MergePDFToolView: View {
     }
 }
 
+@MainActor
 struct SplitPDFToolView: View {
     let session: ToolSession
     @State private var mode: PDFOps.SplitMode = .everyPage
@@ -127,6 +129,7 @@ struct SplitPDFToolView: View {
     }
 }
 
+@MainActor
 struct OrganizePDFToolView: View {
     let session: ToolSession
     @State private var pages: [PDFPageRef] = []

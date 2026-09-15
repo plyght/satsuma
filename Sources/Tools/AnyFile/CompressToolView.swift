@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct CompressToolView: View {
     let session: ToolSession
     @EnvironmentObject private var settings: AppSettings
