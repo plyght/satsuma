@@ -44,7 +44,7 @@ final class ToolWindowManager: NSObject, NSWindowDelegate {
         window.isMovableByWindowBackground = false
         window.isReleasedWhenClosed = false
         window.setContentSize(Self.preferredSize(for: tool))
-        window.minSize = NSSize(width: 560, height: 420)
+        window.minSize = NSSize(width: 560, height: 400)
         window.center()
         window.delegate = self
         window.identifier = NSUserInterfaceItemIdentifier(session.id.uuidString)
@@ -66,7 +66,7 @@ final class ToolWindowManager: NSObject, NSWindowDelegate {
     static func preferredSize(for tool: ToolID) -> NSSize {
         switch tool {
         case .compress:
-            return NSSize(width: 640, height: 640)
+            return NSSize(width: 640, height: 560)
         case .resizeImage, .createPDF, .mergePDF, .splitPDF:
             return NSSize(width: 720, height: 560)
         case .editMetadata, .rotateImage, .audioChannels, .normalizeAudio:

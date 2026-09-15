@@ -136,7 +136,7 @@ struct RadialWheelView: View {
     var geometry: RadialGeometry
 
     var body: some View {
-        GlassEffectContainer(spacing: 8) {
+        GlassEffectContainer(spacing: 0) {
             ZStack {
                 if items.isEmpty {
                     empty
@@ -157,13 +157,13 @@ struct RadialWheelView: View {
         return GeometryReader { proxy in
             let rect = CGRect(origin: .zero, size: proxy.size)
             let mid = geometry.midpoint(for: index, in: rect)
-            Color.clear
-                .glassEffect(selected ? .regular.tint(Theme.accent) : .regular, in: shape)
-                .overlay(alignment: .topLeading) {
-                    label(item, selected: selected)
-                        .frame(width: geometry.labelWidth)
-                        .position(mid)
-                }
+            ZStack {
+                label(item, selected: selected)
+                    .frame(width: geometry.labelWidth)
+                    .position(mid)
+            }
+            .frame(width: rect.width, height: rect.height)
+            .glassEffect(selected ? .regular.tint(Theme.accent) : .regular, in: shape)
         }
         .animation(.easeOut(duration: 0.12), value: highlighted)
     }
