@@ -8,6 +8,21 @@ struct ShellResult {
     var succeeded: Bool { status == 0 }
 }
 
+final class PipeBuffer: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stdout = Data()
+    private var stderr = Data()
+
+    func set(stdout data: Data) { lock.withLock { stdout = data } }
+    func set(stderr data: Data) { lock.withLock { stderr = data } }
+
+    func result(status: Int32) -> ShellResult {
+        lock.withLock {
+            ShellResult(status: status, stdout: String(decoding: stdout, as: UTF8.self), stderr: String(decoding: stderr, as: UTF8.self))
+        }
+    }
+}
+
 enum Shell {
     static func run(_ executable: String, _ arguments: [String], currentDirectory: URL? = nil) async throws -> ShellResult {
         try await withCheckedThrowingContinuation { continuation in
@@ -19,26 +34,21 @@ enum Shell {
             let errPipe = Pipe()
             process.standardOutput = outPipe
             process.standardError = errPipe
-            var outData = Data()
-            var errData = Data()
+            let output = PipeBuffer()
             let group = DispatchGroup()
             group.enter()
             DispatchQueue.global().async {
-                outData = outPipe.fileHandleForReading.readDataToEndOfFile()
+                output.set(stdout: outPipe.fileHandleForReading.readDataToEndOfFile())
                 group.leave()
             }
             group.enter()
             DispatchQueue.global().async {
-                errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+                output.set(stderr: errPipe.fileHandleForReading.readDataToEndOfFile())
                 group.leave()
             }
             process.terminationHandler = { proc in
                 group.wait()
-                continuation.resume(returning: ShellResult(
-                    status: proc.terminationStatus,
-                    stdout: String(decoding: outData, as: UTF8.self),
-                    stderr: String(decoding: errData, as: UTF8.self)
-                ))
+                continuation.resume(returning: output.result(status: proc.terminationStatus))
             }
             do {
                 try process.run()
