@@ -15,6 +15,13 @@ final class Job: ObservableObject, Identifiable {
         case running
         case done
         case failed(String)
+
+        var isFinished: Bool {
+            switch self {
+            case .done, .failed: return true
+            case .waiting, .running: return false
+            }
+        }
     }
 
     init(title: String) { self.title = title }
@@ -85,7 +92,7 @@ final class JobRunner: ObservableObject {
     }
 
     private func scheduleHide() {
-        guard jobs.allSatisfy({ $0.status == .done || { if case .failed = $0.status { return true }; return false }() }) else { return }
+        guard jobs.allSatisfy({ $0.status.isFinished }) else { return }
         hideWorkItem?.cancel()
         let item = DispatchWorkItem { [weak self] in
             guard let self else { return }
