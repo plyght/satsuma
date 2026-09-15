@@ -40,9 +40,7 @@ jobs:
         run: |
           mkdir -p screenshots
           APP="$(brisk path)"
-          SATSUMA_SCREENSHOTS="$PWD/screenshots" perl -e 'alarm 600; exec @ARGV' \
-            lldb --batch -o run -o "thread backtrace all" -o "quit" -- "$APP/Contents/MacOS/Satsuma" \
-            || echo "screenshot driver exited $?"
+          SATSUMA_SCREENSHOTS="$PWD/screenshots" perl -e 'alarm 600; exec @ARGV' "$APP/Contents/MacOS/Satsuma" || echo "screenshot driver exited $?"
           sleep 5
           ls -la screenshots
           mkdir -p screenshots/crash

@@ -2,6 +2,16 @@ import AVFoundation
 import AppKit
 import CoreGraphics
 import CoreText
+import Darwin
+
+private func dumpBacktrace(_ signal: Int32) {
+    var frames = [UnsafeMutableRawPointer?](repeating: nil, count: 128)
+    let count = backtrace(&frames, Int32(frames.count))
+    let message = "fatal signal \(signal)\n"
+    write(STDERR_FILENO, message, message.utf8.count)
+    backtrace_symbols_fd(&frames, count, STDERR_FILENO)
+    _exit(128 + signal)
+}
 
 @MainActor
 enum ScreenshotDriver {
@@ -9,6 +19,10 @@ enum ScreenshotDriver {
 
     static func run(radial: RadialController) {
         guard let directory = ProcessInfo.processInfo.environment["SATSUMA_SCREENSHOTS"].map({ URL(fileURLWithPath: $0) }) else { return }
+        for sig in [SIGSEGV, SIGBUS, SIGABRT, SIGILL, SIGTRAP] { signal(sig, dumpBacktrace) }
+        NSSetUncaughtExceptionHandler { exception in
+            fputs("uncaught exception \(exception.name.rawValue): \(exception.reason ?? "")\n\(exception.callStackSymbols.joined(separator: "\n"))\n", stderr)
+        }
         Task {
             do {
                 try await capture(into: directory, radial: radial)
@@ -87,7 +101,7 @@ enum ScreenshotDriver {
             ToolWindowManager.shared.open(tool, files: files)
             try await Task.sleep(nanoseconds: 2_500_000_000)
             for window in ToolWindowManager.shared.openWindows {
-                try await screencapture(["-x", "-o", "-l", "\(window.windowNumber)", directory.appendingPathComponent("tool-\(tool.rawValue).png").path])
+                try await screencapture("tool-\(tool.rawValue)", ["-x", "-o", "-l", "\(window.windowNumber)", directory.appendingPathComponent("tool-\(tool.rawValue).png").path])
             }
             ToolWindowManager.shared.closeAll()
             try await Task.sleep(nanoseconds: 300_000_000)
@@ -98,6 +112,14 @@ enum ScreenshotDriver {
     private static func screencapture(_ arguments: [String]) async throws {
         let result = try await Shell.run("/usr/sbin/screencapture", arguments)
         guard result.succeeded else { throw SatsumaError.toolFailed("screencapture", result.stderr) }
+    }
+
+    private static func screencapture(_ label: String, _ arguments: [String]) async throws {
+        do {
+            try await screencapture(arguments)
+        } catch {
+            fputs("\(label): \(error)\n", stderr)
+        }
     }
 }
 
