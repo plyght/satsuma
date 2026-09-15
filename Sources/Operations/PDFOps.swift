@@ -115,7 +115,7 @@ enum PDFOps {
     static func compress(_ url: URL, strong: Bool, to destination: URL) throws {
         let source = try document(url)
         var options: [PDFDocumentWriteOption: Any] = [:]
-        if #available(macOS 13.0, *) {
+        if #available(macOS 13.4, *) {
             options[.saveImagesAsJPEGOption] = true
             options[.optimizeImagesForScreenOption] = true
         }
