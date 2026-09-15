@@ -15,6 +15,7 @@ final class MediaController: ObservableObject {
     @Published var waveform: [Float] = []
     private var observer: Any?
     private var endObserver: Any?
+    private var boundaryObserver: Any?
 
     init(url: URL) {
         self.url = url
@@ -34,6 +35,12 @@ final class MediaController: ObservableObject {
             self.duration = info.duration
             self.loaded = true
         }
+    }
+
+    deinit {
+        if let observer { player.removeTimeObserver(observer) }
+        if let boundaryObserver { player.removeTimeObserver(boundaryObserver) }
+        if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
     }
 
     func loadWaveform(buckets: Int = 600) {
@@ -81,10 +88,14 @@ final class MediaController: ObservableObject {
         player.play()
         isPlaying = true
         let boundary = CMTime(seconds: end, preferredTimescale: 600)
-        var token: Any?
-        token = player.addBoundaryTimeObserver(forTimes: [NSValue(time: boundary)], queue: .main) { [weak self] in
-            self?.pause()
-            if let token { self?.player.removeTimeObserver(token) }
+        if let boundaryObserver { player.removeTimeObserver(boundaryObserver) }
+        boundaryObserver = player.addBoundaryTimeObserver(forTimes: [NSValue(time: boundary)], queue: .main) { [weak self] in
+            guard let self else { return }
+            self.pause()
+            if let token = self.boundaryObserver {
+                self.player.removeTimeObserver(token)
+                self.boundaryObserver = nil
+            }
         }
     }
 }

@@ -45,7 +45,7 @@ jobs:
           ls -la screenshots
           mkdir -p screenshots/crash
           cp ~/Library/Logs/DiagnosticReports/Satsuma* screenshots/crash/ 2>/dev/null || true
-          for f in screenshots/crash/*; do [ -f "$f" ] && { echo "=== $f"; head -c 20000 "$f"; }; done
+          for f in screenshots/crash/*; do [ -f "$f" ] && { echo "=== $f"; head -c 20000 "$f"; }; done; true
 
       - name: Upload screenshots
         if: always()
