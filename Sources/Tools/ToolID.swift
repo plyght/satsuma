@@ -91,29 +91,33 @@ enum ToolID: String, CaseIterable, Identifiable {
         }
     }
 
-    var symbol: String {
+    var icon: Reicon {
         switch self {
-        case .compress: return "arrow.down.right.and.arrow.up.left"
-        case .editMetadata: return "tag"
-        case .editImage: return "slider.horizontal.3"
-        case .frameImage: return "rectangle.inset.filled"
-        case .cropImage, .cropVideo: return "crop"
-        case .redactImage, .redactVideo: return "eye.slash"
-        case .resizeImage: return "arrow.up.left.and.arrow.down.right"
-        case .rotateImage: return "rotate.right"
-        case .createPDF: return "doc.richtext"
-        case .createCollage: return "square.grid.2x2"
-        case .trimVideo, .trimAudio: return "scissors"
-        case .changeVideoSpeed: return "speedometer"
-        case .joinVideos: return "link"
-        case .videoSnapshots: return "camera"
-        case .splitVideo, .splitPDF: return "square.split.2x1"
-        case .normalizeAudio: return "waveform.path.ecg"
-        case .audioToVideo: return "waveform"
-        case .audioChannels: return "speaker.wave.2"
-        case .redactAudio: return "speaker.slash"
-        case .mergePDF: return "doc.on.doc"
-        case .organizePDF: return "square.grid.3x3"
+        case .compress: return .compress
+        case .editMetadata: return .tagCross
+        case .editImage: return .sliders
+        case .frameImage: return .galleryAdd
+        case .cropImage: return .crop
+        case .cropVideo: return .crop2
+        case .redactImage: return .eyeOff
+        case .redactVideo: return .videoOff
+        case .resizeImage: return .maximize
+        case .rotateImage: return .arrowRotate
+        case .createPDF: return .filePdf
+        case .createCollage: return .layout
+        case .trimVideo: return .scissors
+        case .trimAudio: return .scissorsSquare
+        case .changeVideoSpeed: return .playbackSpeed
+        case .joinVideos: return .link
+        case .videoSnapshots: return .camera
+        case .splitVideo: return .videoCut
+        case .splitPDF: return .files
+        case .normalizeAudio: return .soundwave
+        case .audioToVideo: return .musicPlay
+        case .audioChannels: return .headphones
+        case .redactAudio: return .mute
+        case .mergePDF: return .docs
+        case .organizePDF: return .reorder
         }
     }
 

@@ -49,7 +49,7 @@ struct SettingsView: View {
                     Button("Choose…") { chooseFFmpeg() }
                 }
                 HStack(spacing: 6) {
-                    Image(systemName: ffmpegStatus == nil ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                    Icon(ffmpegStatus == nil ? .alertTriangle : .checkCircle, size: 14)
                         .foregroundStyle(ffmpegStatus == nil ? .orange : .green)
                     Text(ffmpegStatus.map { "Using \($0)" } ?? "FFmpeg not found. Install with `brew install ffmpeg` or pick the binary.")
                         .font(.caption)
@@ -65,6 +65,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .tint(Theme.accent)
         .frame(width: 480)
         .onChange(of: settings.ffmpegPath) { _ in ffmpegStatus = FFmpeg.path }
     }

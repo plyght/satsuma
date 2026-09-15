@@ -29,7 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func installStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "circle.hexagongrid.circle", accessibilityDescription: "Satsuma")
+            button.image = MenuBarIcon.image
             button.toolTip = "Satsuma — hold Shift while dragging a file"
         }
         let menu = NSMenu()

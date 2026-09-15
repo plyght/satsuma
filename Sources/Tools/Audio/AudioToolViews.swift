@@ -88,7 +88,7 @@ struct NormalizeAudioToolView: View {
                 TransportBar(controller: media, showFrameSteps: false)
                 HStack(spacing: 24) {
                     LevelColumn(title: "Input", integrated: stats?.integrated, range: stats?.range, peak: stats?.truePeak, pending: !analyzed)
-                    Image(systemName: "arrow.right").foregroundStyle(.secondary)
+                    Icon(.arrowRight, size: 14).foregroundStyle(.secondary)
                     LevelColumn(title: "Output", integrated: target, range: range, peak: truePeak, pending: false)
                 }
                 .padding(12)
@@ -297,8 +297,8 @@ struct RedactAudioToolView: View {
                         Circle().fill(range.id == selected ? Color.orange : Color.secondary).frame(width: 8, height: 8)
                         Text("\(TimeFormatter.clock(range.start)) – \(TimeFormatter.clock(range.end))").font(.callout.monospacedDigit())
                         Spacer()
-                        Button { media.playRange(range.start, range.end) } label: { Image(systemName: "play") }
-                        Button { ranges.removeAll { $0.id == range.id }; if selected == range.id { selected = nil } } label: { Image(systemName: "trash") }
+                        Button { media.playRange(range.start, range.end) } label: { Icon(.play, size: 13) }
+                        Button { ranges.removeAll { $0.id == range.id }; if selected == range.id { selected = nil } } label: { Icon(.trash, size: 13) }
                     }
                     .buttonStyle(.borderless)
                     .contentShape(Rectangle())

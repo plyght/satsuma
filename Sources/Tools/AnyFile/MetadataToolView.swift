@@ -91,7 +91,7 @@ struct MetadataToolView: View {
         HStack(alignment: .firstTextBaseline) {
             HStack(spacing: 4) {
                 if field.sensitive {
-                    Image(systemName: "exclamationmark.shield.fill").foregroundStyle(.orange).font(.caption)
+                    Icon(.alertTriangle, size: 12).foregroundStyle(.orange).font(.caption)
                 }
                 Text(field.key).font(.callout).frame(width: 200, alignment: .leading).lineLimit(1)
             }

@@ -86,7 +86,7 @@ final class RadialController: DragMonitorDelegate {
         let view = panel.radialView
         view.interactive = pickerMode
         view.advancedMode = advanced
-        let clamped = clampedCenter(point, in: screen.frame, radius: view.outerRadius + 20)
+        let clamped = clampedCenter(point, in: screen.frame, radius: view.discRadius + 48)
         view.center = NSPoint(x: clamped.x - screen.frame.minX, y: clamped.y - screen.frame.minY)
         view.onSelect = { [weak self] item in self?.select(item) }
         view.onCancel = { [weak self] in self?.hide() }
@@ -134,6 +134,10 @@ final class RadialController: DragMonitorDelegate {
                 ToolWindowManager.shared.open(tool, files: selectedURLs)
             }
         }
+    }
+
+    func highlight(_ index: Int) {
+        panel?.radialView.highlight(index)
     }
 
     func hide() {

@@ -7,6 +7,8 @@ bundle_id = "lol.peril.satsuma"
 deployment_target = "13.0"
 sources = "Sources"
 resources = ["Resources"]
+asset_catalogs = ["Assets.xcassets"]
+app_icon = "AppIcon"
 frameworks = [
   "AppKit",
   "AVFoundation",

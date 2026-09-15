@@ -262,7 +262,7 @@ struct LoadingOrError: View {
     var body: some View {
         VStack(spacing: 10) {
             if let error {
-                Image(systemName: "exclamationmark.triangle").font(.largeTitle).foregroundStyle(.orange)
+                Icon(.alertTriangle, size: 40).font(.largeTitle).foregroundStyle(.orange)
                 Text(error).foregroundStyle(.secondary).multilineTextAlignment(.center)
             } else {
                 ProgressView()

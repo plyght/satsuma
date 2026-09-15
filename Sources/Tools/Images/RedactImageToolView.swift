@@ -70,7 +70,7 @@ struct RedactImageToolView: View {
                         Text("Area \(overlay.label)").font(.callout)
                         Text((styles[overlay.id] ?? defaultStyle).title).font(.caption).foregroundStyle(.secondary)
                         Spacer()
-                        Button { remove(overlay.id) } label: { Image(systemName: "trash") }.buttonStyle(.borderless)
+                        Button { remove(overlay.id) } label: { Icon(.trash, size: 13) }.buttonStyle(.borderless)
                     }
                     .contentShape(Rectangle())
                     .onTapGesture { selected = overlay.id }

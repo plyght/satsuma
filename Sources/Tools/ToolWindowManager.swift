@@ -38,8 +38,17 @@ final class ToolWindowManager: NSObject, NSWindowDelegate {
         let controller = NSHostingController(rootView: root)
         let window = NSWindow(contentViewController: controller)
         window.title = "\(tool.title) — \(files.count == 1 ? files[0].lastPathComponent : "\(files.count) files")"
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        window.titlebarAppearsTransparent = false
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.isMovableByWindowBackground = true
+        window.appearance = NSAppearance(named: .aqua)
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.hasShadow = true
+        for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+            window.standardWindowButton(button)?.isHidden = true
+        }
         window.isReleasedWhenClosed = false
         window.setContentSize(Self.preferredSize(for: tool))
         window.minSize = NSSize(width: 560, height: 420)
@@ -110,6 +119,92 @@ struct ToolRootView: View {
     }
 }
 
+struct WindowChrome<Content: View>: View {
+    let session: ToolSession
+    var saveTitle: String
+    var saveEnabled: Bool
+    var onSave: () -> Void
+    @ViewBuilder var content: () -> Content
+
+    private var fileLabel: String {
+        session.files.count == 1 ? session.primary.lastPathComponent : "\(session.files.count) files"
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Text(session.tool.title)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(Theme.ink)
+                HStack {
+                    Button { ToolWindowManager.shared.close(session) } label: { Icon(.x, size: 14) }
+                        .buttonStyle(CircleIconButtonStyle())
+                        .keyboardShortcut(.cancelAction)
+                        .help("Close")
+                    Spacer()
+                }
+            }
+            .padding(.horizontal, 18)
+            .frame(height: 60)
+            Rectangle().fill(Theme.hairline).frame(height: 1)
+
+            content()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Rectangle().fill(Theme.hairline).frame(height: 1)
+            HStack(spacing: 10) {
+                Icon(session.tool.icon, size: 16)
+                    .foregroundStyle(Theme.inkSecondary)
+                Text(fileLabel)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Theme.inkSecondary)
+                Spacer()
+                Button("Cancel") { ToolWindowManager.shared.close(session) }
+                    .buttonStyle(QuietButtonStyle())
+                Button(saveTitle) { onSave() }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!saveEnabled)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+        }
+        .background(WindowBackground())
+        .preferredColorScheme(.light)
+    }
+}
+
+struct WindowBackground: View {
+    var body: some View {
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            Color.clear
+                .glassEffect(.regular.tint(Color.white.opacity(0.55)), in: RoundedRectangle(cornerRadius: Theme.windowCorner, style: .continuous))
+                .ignoresSafeArea()
+        } else {
+            legacy
+        }
+        #else
+        legacy
+        #endif
+    }
+
+    private var legacy: some View {
+        ZStack {
+            Rectangle().fill(.regularMaterial)
+            Color(nsColor: NSColor(srgbRed: 0.965, green: 0.965, blue: 0.97, alpha: 0.86))
+        }
+        .clipShape(RoundedRectangle(cornerRadius: Theme.windowCorner, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: Theme.windowCorner, style: .continuous)
+                .strokeBorder(Color.black.opacity(0.10), lineWidth: 1)
+        }
+        .ignoresSafeArea()
+    }
+}
+
 struct ToolShell<Content: View, Sidebar: View>: View {
     let session: ToolSession
     var saveTitle = "Save copy"
@@ -119,40 +214,45 @@ struct ToolShell<Content: View, Sidebar: View>: View {
     @ViewBuilder var sidebar: () -> Sidebar
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 0) {
+        WindowChrome(session: session, saveTitle: saveTitle, saveEnabled: saveEnabled, onSave: onSave) {
+            HStack(spacing: 14) {
                 content()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color(nsColor: .underPageBackgroundColor))
-                Divider()
+                    .background(Color.black.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous)
+                            .strokeBorder(Theme.cardStroke, lineWidth: 1)
+                    }
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 12) {
                         sidebar()
                     }
-                    .padding(16)
+                    .padding(.trailing, 2)
                 }
-                .frame(width: 300)
+                .frame(width: 292)
             }
-            Divider()
-            HStack {
-                Label {
-                    Text(session.files.count == 1 ? session.primary.lastPathComponent : "\(session.files.count) files")
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                } icon: {
-                    Image(systemName: session.tool.symbol)
+            .padding(18)
+        }
+    }
+}
+
+struct FormShell<Content: View>: View {
+    let session: ToolSession
+    var saveTitle = "Save copy"
+    var saveEnabled = true
+    var onSave: () -> Void
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        WindowChrome(session: session, saveTitle: saveTitle, saveEnabled: saveEnabled, onSave: onSave) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    content()
                 }
-                .foregroundStyle(.secondary)
-                .font(.callout)
-                Spacer()
-                Button("Cancel") { ToolWindowManager.shared.close(session) }
-                    .keyboardShortcut(.cancelAction)
-                Button(saveTitle) { onSave() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(!saveEnabled)
+                .padding(24)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
         }
     }
 }
@@ -162,12 +262,54 @@ struct SidebarSection<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title.uppercased())
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.ink)
             content()
         }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
+    }
+}
+
+struct FormRow<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Text(title)
+                .font(.system(size: 17, weight: .regular))
+                .foregroundStyle(Theme.ink)
+            content()
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+struct FormHeading: View {
+    let text: String
+
+    init(_ text: String) { self.text = text }
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 19, weight: .bold))
+            .foregroundStyle(Theme.ink)
+    }
+}
+
+struct FormHint: View {
+    let text: String
+
+    init(_ text: String) { self.text = text }
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 14))
+            .foregroundStyle(Theme.inkSecondary)
     }
 }
 

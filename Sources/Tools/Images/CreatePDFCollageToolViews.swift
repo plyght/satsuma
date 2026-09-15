@@ -24,9 +24,9 @@ struct OrderedFileList: View {
                             Text(FileSizeFormatter.string(FileSizeFormatter.size(of: url))).font(.caption).foregroundStyle(.secondary)
                         }
                         Spacer()
-                        Button { move(index, -1) } label: { Image(systemName: "chevron.up") }.disabled(index == 0)
-                        Button { move(index, 1) } label: { Image(systemName: "chevron.down") }.disabled(index == files.count - 1)
-                        Button { files.remove(at: index) } label: { Image(systemName: "xmark.circle") }.disabled(files.count <= 1)
+                        Button { move(index, -1) } label: { Icon(.chevronUp, size: 12) }.disabled(index == 0)
+                        Button { move(index, 1) } label: { Icon(.chevronDown, size: 12) }.disabled(index == files.count - 1)
+                        Button { files.remove(at: index) } label: { Icon(.xCircle, size: 13) }.disabled(files.count <= 1)
                     }
                     .buttonStyle(.borderless)
                     .padding(.vertical, 2)

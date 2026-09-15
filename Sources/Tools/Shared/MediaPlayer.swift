@@ -125,14 +125,14 @@ struct TransportBar: View {
     var body: some View {
         HStack(spacing: 10) {
             if showFrameSteps {
-                Button { controller.stepFrame(-1) } label: { Image(systemName: "backward.frame") }
+                Button { controller.stepFrame(-1) } label: { Icon(.backwardStep, size: 14) }
                     .help("Previous frame")
             }
             Button { controller.togglePlay() } label: {
-                Image(systemName: controller.isPlaying ? "pause.fill" : "play.fill").frame(width: 16)
+                Icon(controller.isPlaying ? .pause : .play, size: 16)
             }
             if showFrameSteps {
-                Button { controller.stepFrame(1) } label: { Image(systemName: "forward.frame") }
+                Button { controller.stepFrame(1) } label: { Icon(.forwardStep, size: 14) }
                     .help("Next frame")
             }
             Text(TimeFormatter.clock(controller.currentTime))

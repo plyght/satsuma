@@ -15,6 +15,10 @@ Keyboard: while the radial menu is open, press **Option** to toggle between form
 
 Satsuma lives in the menu bar (no Dock icon). The status item shows job progress and opens Settings.
 
+## Look and feel
+
+The radial menu and tool windows follow Tangerine's light, rounded style: a translucent wheel with pale segments, an orange highlight, a white centre pill naming the selection, and card-based tool sheets with segmented controls. On macOS 26 and later the wheel and window backgrounds use Liquid Glass (`NSGlassEffectView` / `glassEffect`); on macOS 13–15 they fall back to `NSVisualEffectView` materials, so one binary runs everywhere. All interface icons come from [reicon](https://github.com/dqev/reicon), compiled into `Sources/UI/Reicon.swift` as template `NSImage`s so no JavaScript tooling is needed at build time.
+
 ## Conversions
 
 | Source | Targets |
@@ -69,7 +73,7 @@ scripts/check.sh --fix  # apply swift-format fixes first
 
 ## Verification status
 
-The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on a `macos-14` runner: `brisk build`, `brisk test` (conversion matrix, naming, subtitle, PDF-range, tool-applicability, compression and timecode logic in `Tests/SatsumaTests.swift`), then launches the app with `SATSUMA_SCREENSHOTS=<dir>` so `Sources/App/ScreenshotDriver.swift` generates sample media, opens the radial menu and all 25 tool windows, and captures them with `screencapture`. Screenshots and the release `Satsuma.app` zip are uploaded as workflow artifacts. Actual Finder Shift-drag and the Accessibility prompt cannot be exercised on a headless runner and still need a manual check on a Mac.
+The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on `macos-14` (material fallback) and `macos-26` (Liquid Glass) runners: `brisk build`, `brisk test` (conversion matrix, naming, subtitle, PDF-range, tool-applicability, compression and timecode logic in `Tests/SatsumaTests.swift`), then launches the app with `SATSUMA_SCREENSHOTS=<dir>` so `Sources/App/ScreenshotDriver.swift` generates sample media, opens the radial menu and all 25 tool windows, and captures them with `screencapture`. Screenshots and the release `Satsuma.app` zip are uploaded as workflow artifacts. Actual Finder Shift-drag and the Accessibility prompt cannot be exercised on a headless runner and still need a manual check on a Mac.
 
 ## Project layout
 

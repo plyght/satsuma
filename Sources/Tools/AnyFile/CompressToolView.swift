@@ -22,57 +22,103 @@ struct CompressToolView: View {
         return Int64(targetValue * targetUnit.multiplier)
     }
 
+    private enum ImageSize: Int, CaseIterable, Identifiable {
+        case original = 0
+        case large = 2560
+        case medium = 1920
+        case small = 1280
+
+        var id: Int { rawValue }
+        var title: String {
+            switch self {
+            case .original: return "Original"
+            case .large: return "2560 px"
+            case .medium: return "1920 px"
+            case .small: return "1280 px"
+            }
+        }
+    }
+
+    private var imageSize: Binding<ImageSize> {
+        Binding(
+            get: { ImageSize(rawValue: resize) ?? .original },
+            set: { resize = $0.rawValue }
+        )
+    }
+
+    private var hasImages: Bool { session.files.contains { FileFormat.detect($0)?.category == .image } }
+
     var body: some View {
-        ToolShell(session: session, saveTitle: session.files.count == 1 ? "Compress" : "Compress \(session.files.count) files", onSave: run) {
-            List(session.files, id: \.self) { url in
-                HStack {
-                    Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 28, height: 28)
-                    VStack(alignment: .leading) {
-                        Text(url.lastPathComponent).lineLimit(1)
-                        Text("\(FileSizeFormatter.string(FileSizeFormatter.size(of: url))) → \(Compressor.outputFormat(for: url).displayName)")
-                            .font(.caption).foregroundStyle(.secondary)
+        FormShell(session: session, saveTitle: session.files.count == 1 ? "Compress" : "Compress \(session.files.count) files", onSave: run) {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(session.files, id: \.self) { url in
+                    HStack(spacing: 14) {
+                        Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 44, height: 44)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(url.lastPathComponent)
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(Theme.ink)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Text("\(FileSizeFormatter.string(FileSizeFormatter.size(of: url))) · saves as \(Compressor.outputFormat(for: url).displayName)")
+                                .font(.system(size: 14))
+                                .foregroundStyle(Theme.inkSecondary)
+                        }
+                        Spacer()
                     }
                 }
-                .padding(.vertical, 2)
             }
-            .listStyle(.inset)
-        } sidebar: {
-            SidebarSection(title: "Preset") {
-                Picker("", selection: $settings.compressionPreset) {
-                    ForEach(CompressionPreset.allCases) { Text($0.title).tag($0) }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .card()
+
+            FormRow(title: "Compression") {
+                SegmentedPicker(selection: $settings.compressionPreset, options: CompressionPreset.allCases.map { ($0, $0.title) })
+            }
+            FormHint(settings.compressionPreset == .balanced ? "Noticeably smaller with little visible change." : "Smallest output; quality loss is visible.")
+
+            if hasImages {
+                FormRow(title: "Image size") {
+                    SegmentedPicker(selection: imageSize, options: ImageSize.allCases.map { ($0, $0.title) })
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                Text(settings.compressionPreset == .balanced ? "Noticeably smaller with little visible change." : "Smallest output; quality loss is visible.")
-                    .font(.caption).foregroundStyle(.secondary)
+                FormHint("Longest edge of each image. Smaller images are never upscaled.")
             }
-            SidebarSection(title: "Target size") {
-                Toggle("Aim for an exact file size", isOn: $useTarget)
-                HStack {
-                    TextField("Size", value: $targetValue, format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 80)
-                    Picker("", selection: $targetUnit) {
-                        ForEach(SizeUnit.allCases) { Text($0.rawValue).tag($0) }
+
+            VStack(alignment: .leading, spacing: 14) {
+                Toggle(isOn: $useTarget.animation(.easeInOut(duration: 0.18))) {
+                    Text("Target file size")
+                        .font(.system(size: 17))
+                        .foregroundStyle(Theme.ink)
+                }
+                .toggleStyle(.switch)
+                .tint(Theme.accent)
+
+                if useTarget {
+                    HStack(spacing: 10) {
+                        TextField("Size", value: $targetValue, format: .number)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 15, weight: .medium))
+                            .multilineTextAlignment(.trailing)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .frame(width: 96)
+                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.white))
+                            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.cardStroke))
+                        SegmentedPicker(selection: $targetUnit, options: SizeUnit.allCases.map { ($0, $0.rawValue) })
+                        Text("per file")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Theme.inkSecondary)
                     }
-                    .labelsHidden()
-                    .frame(width: 70)
-                    Text("per file").font(.caption).foregroundStyle(.secondary)
+                    FormHint("Images use a quality search and downscale if needed. Videos and audio pick a bitrate from the duration (FFmpeg required).")
                 }
-                .disabled(!useTarget)
-                Text("Images use a quality search and downscale if needed. Videos and audio pick a bitrate from the duration (FFmpeg required).")
-                    .font(.caption2).foregroundStyle(.secondary)
             }
-            SidebarSection(title: "Resize images") {
-                NumberField(title: "Long edge", value: $resize, suffix: "px")
-                Text("0 keeps the original dimensions.").font(.caption2).foregroundStyle(.secondary)
-            }
-            SidebarSection(title: "Summary") {
-                Text("\(session.files.count) file\(session.files.count == 1 ? "" : "s"), \(FileSizeFormatter.string(totalSize)) total")
-                    .font(.callout)
-                Text("Originals are never modified; compressed copies are saved to \(settings.outputLocation.title.lowercased()).")
-                    .font(.caption2).foregroundStyle(.secondary)
-            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .card()
+
+            Text("\(session.files.count) file\(session.files.count == 1 ? "" : "s"), \(FileSizeFormatter.string(totalSize)) total. Originals stay untouched; compressed copies are saved to \(settings.outputLocation.title.lowercased()).")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.inkSecondary)
         }
         .onAppear { resize = settings.compressionResizeLongEdge }
     }
