@@ -224,12 +224,13 @@ struct CollageToolView: View {
         renderTask?.cancel()
         let images = files.compactMap { thumbs.images[$0]?.cgImage(forProposedRect: nil, context: nil, hints: nil) }
         guard !images.isEmpty else { return }
-        var o = options
-        let scale = min(1, 1200 / max(o.width, o.height))
-        o.width *= scale
-        o.height *= scale
-        o.spacing *= scale
-        o.cornerRadius *= scale
+        var scaled = options
+        let scale = min(1, 1200 / max(scaled.width, scaled.height))
+        scaled.width *= scale
+        scaled.height *= scale
+        scaled.spacing *= scale
+        scaled.cornerRadius *= scale
+        let o = scaled
         renderTask = Task.detached(priority: .userInitiated) {
             guard let cg = ImageOps.collage(images, options: o), !Task.isCancelled else { return }
             let ns = ImageOps.nsImage(cg)
