@@ -44,11 +44,11 @@ enum FFmpeg {
             let errPipe = Pipe()
             process.standardOutput = outPipe
             process.standardError = errPipe
-            var errData = Data()
+            let output = PipeBuffer()
             let group = DispatchGroup()
             group.enter()
             DispatchQueue.global().async {
-                errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+                output.set(stderr: errPipe.fileHandleForReading.readDataToEndOfFile())
                 group.leave()
             }
             group.enter()
@@ -72,11 +72,7 @@ enum FFmpeg {
             }
             process.terminationHandler = { proc in
                 group.wait()
-                continuation.resume(returning: ShellResult(
-                    status: proc.terminationStatus,
-                    stdout: "",
-                    stderr: String(decoding: errData, as: UTF8.self)
-                ))
+                continuation.resume(returning: output.result(status: proc.terminationStatus))
             }
             do {
                 try process.run()
