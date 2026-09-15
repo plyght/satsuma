@@ -11,6 +11,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         installStatusItem()
+        if ScreenshotDriver.isEnabled {
+            ScreenshotDriver.run(radial: radial)
+            return
+        }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
         dragMonitor.delegate = radial
         dragMonitor.start()

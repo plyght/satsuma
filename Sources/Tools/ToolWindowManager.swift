@@ -23,6 +23,13 @@ final class ToolWindowManager: NSObject, NSWindowDelegate {
 
     private var windows: [UUID: NSWindow] = [:]
 
+    var openWindows: [NSWindow] { Array(windows.values) }
+
+    func closeAll() {
+        windows.values.forEach { $0.close() }
+        windows.removeAll()
+    }
+
     func open(_ tool: ToolID, files: [URL]) {
         guard !files.isEmpty else { return }
         let session = ToolSession(tool: tool, files: files)

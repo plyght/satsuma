@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  macos:
+    runs-on: macos-14
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install brisk
+        env:
+          BRISK_VERSION: v0.1.6
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/plyght/brisk/master/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install ffmpeg
+        run: brew install ffmpeg
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swiftc --version
+          brisk --version || true
+
+      - name: Build
+        run: brisk build --verbose
+
+      - name: Test
+        run: brisk test --verbose
+
+      - name: Screenshots
+        run: |
+          mkdir -p screenshots
+          APP="$(brisk path)"
+          SATSUMA_SCREENSHOTS="$PWD/screenshots" perl -e 'alarm 600; exec @ARGV' "$APP/Contents/MacOS/Satsuma" || echo "screenshot driver exited $?"
+          ls -la screenshots
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots
+          if-no-files-found: warn
+
+      - name: Archive
+        run: brisk archive --release
+
+      - name: Upload app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Satsuma.app
+          path: .brisk/Archives/Satsuma.zip
