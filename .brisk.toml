@@ -1,0 +1,50 @@
+[package]
+name = "Satsuma"
+version = "0.1.0"
+
+[app]
+bundle_id = "lol.peril.satsuma"
+deployment_target = "13.0"
+sources = "Sources"
+resources = ["Resources"]
+frameworks = [
+  "AppKit",
+  "AVFoundation",
+  "AVKit",
+  "Combine",
+  "CoreImage",
+  "SwiftUI",
+  "CoreMedia",
+  "CoreText",
+  "ImageIO",
+  "PDFKit",
+  "Quartz",
+  "UniformTypeIdentifiers",
+  "UserNotifications",
+  "ServiceManagement",
+]
+swift_flags = ["-swift-version", "5"]
+
+[build]
+architectures = ["arm64"]
+platform = "macos"
+
+[app.info]
+LSUIElement = true
+LSApplicationCategoryType = "public.app-category.utilities"
+NSHumanReadableCopyright = "MIT License"
+NSSupportsAutomaticTermination = false
+NSSupportsSuddenTermination = false
+
+[signing]
+identity = "-"
+hardened_runtime = false
+
+[test]
+sources = "Tests"
+xctest = false
+
+[archive]
+path = ".brisk/Archives/Satsuma.app"
+export_path = ".brisk/Archives/Satsuma.zip"
+zip = true

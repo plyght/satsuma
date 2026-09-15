@@ -1,0 +1,5 @@
+.build/
+.brisk/
+*.dSYM
+.DS_Store
+*.xcuserstate
