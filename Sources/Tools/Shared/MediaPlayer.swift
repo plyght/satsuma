@@ -129,7 +129,8 @@ struct TransportBar: View {
                     .help("Previous frame")
             }
             Button { controller.togglePlay() } label: {
-                Icon(controller.isPlaying ? .pause : .play, size: 16)
+                Image(systemName: controller.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 14, weight: .semibold))
             }
             if showFrameSteps {
                 Button { controller.stepFrame(1) } label: { Image(systemName: "forward.frame") }
