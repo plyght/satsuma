@@ -82,6 +82,8 @@ enum ScreenshotDriver {
 
         for tool in ToolID.allCases {
             guard let files = inputs[tool] else { continue }
+            print("opening \(tool.rawValue)")
+            fflush(stdout)
             ToolWindowManager.shared.open(tool, files: files)
             try await Task.sleep(nanoseconds: 2_500_000_000)
             for window in ToolWindowManager.shared.openWindows {

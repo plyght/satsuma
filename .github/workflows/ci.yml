@@ -41,7 +41,11 @@ jobs:
           mkdir -p screenshots
           APP="$(brisk path)"
           SATSUMA_SCREENSHOTS="$PWD/screenshots" perl -e 'alarm 600; exec @ARGV' "$APP/Contents/MacOS/Satsuma" || echo "screenshot driver exited $?"
+          sleep 5
           ls -la screenshots
+          mkdir -p screenshots/crash
+          cp ~/Library/Logs/DiagnosticReports/Satsuma* screenshots/crash/ 2>/dev/null || true
+          for f in screenshots/crash/*; do [ -f "$f" ] && { echo "=== $f"; head -c 20000 "$f"; }; done
 
       - name: Upload screenshots
         if: always()
