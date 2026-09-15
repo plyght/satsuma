@@ -69,7 +69,7 @@ scripts/check.sh --fix  # apply swift-format fixes first
 
 ## Verification status
 
-This source tree was written in a Linux environment without access to a macOS toolchain, so **`brisk build` and `brisk test` have not been run**. The code targets the macOS 13 SDK APIs, but expect a first `brisk build` pass to surface compiler diagnostics (deprecated AVFoundation signatures, Swift concurrency warnings, minor type mismatches) that need fixing on a Mac before the app runs. The conversion matrix, naming, subtitle, PDF-range and tool-applicability logic is covered by `Tests/SatsumaTests.swift`; UI and media pipelines require manual verification on macOS.
+The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on a `macos-14` runner: `brisk build`, `brisk test` (conversion matrix, naming, subtitle, PDF-range, tool-applicability, compression and timecode logic in `Tests/SatsumaTests.swift`), then launches the app with `SATSUMA_SCREENSHOTS=<dir>` so `Sources/App/ScreenshotDriver.swift` generates sample media, opens the radial menu and all 25 tool windows, and captures them with `screencapture`. Screenshots and the release `Satsuma.app` zip are uploaded as workflow artifacts. Actual Finder Shift-drag and the Accessibility prompt cannot be exercised on a headless runner and still need a manual check on a Mac.
 
 ## Project layout
 
