@@ -60,7 +60,7 @@ brisk test             # compile and run Tests/ with the app sources
 brisk archive --release
 ```
 
-Satsuma needs **no Accessibility or Input Monitoring permission**. While the mouse button is down it polls `NSEvent.pressedMouseButtons`, `NSEvent.modifierFlags`, `NSEvent.mouseLocation` and the system drag pasteboard (`NSPasteboard(name: .drag)`) (all readable by any app) so it can tell that a Finder drag is in flight with Shift held and show the wheel, which is itself a normal drop target. It never installs key-event monitors or event taps. Notifications are optional.
+Satsuma needs **no Accessibility or Input Monitoring permission**. During a Finder drag it polls `NSEvent.pressedMouseButtons`, `NSEvent.modifierFlags`, `NSEvent.mouseLocation` and the system drag pasteboard (`NSPasteboard(name: .drag)`). If Finder has not published the file URLs yet, Shift plus sustained drag movement shows a generic drop target immediately; the wheel then reads the files from the drag pasteboard or `NSDraggingInfo` as soon as they become available. It never installs key-event monitors or event taps. Notifications are optional.
 
 ## Quality gates
 

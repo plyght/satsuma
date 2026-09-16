@@ -227,6 +227,8 @@ final class RadialView: NSView {
     var center: NSPoint = .zero { didSet { needsLayout = true } }
     var onSelect: ((RadialItem) -> Void)?
     var onCancel: (() -> Void)?
+    var onDragEntered: ((NSDraggingInfo) -> Void)?
+    var onDragSessionEnded: (() -> Void)?
     var interactive = false
     var advancedMode = false { didSet { refresh() } }
 
@@ -249,7 +251,8 @@ final class RadialView: NSView {
     override init(frame frameRect: NSRect) {
         host = PassthroughHostingView(rootView: RadialWheelView(items: [], highlighted: nil, title: "", emptyMessage: "", emptyDetail: "", geometry: RadialGeometry(count: 0)))
         super.init(frame: frameRect)
-        registerForDraggedTypes([.fileURL])
+        let promiseTypes = NSFilePromiseReceiver.readableDraggedTypes.map { NSPasteboard.PasteboardType($0) }
+        registerForDraggedTypes([.fileURL, NSPasteboard.PasteboardType("com.apple.finder.node")] + promiseTypes)
         wantsLayer = true
         host.sizingOptions = []
         addSubview(host)
@@ -303,6 +306,7 @@ final class RadialView: NSView {
     }
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        onDragEntered?(sender)
         updateHighlight(forWindowPoint: sender.draggingLocation)
         return highlighted == nil ? [] : .copy
     }
@@ -312,16 +316,27 @@ final class RadialView: NSView {
         return highlighted == nil ? [] : .copy
     }
 
-    override func draggingExited(_ sender: NSDraggingInfo?) {
-        highlighted = nil
+    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        DragDebug.log("prepareForDragOperation highlighted=\(String(describing: highlighted)) mask=\(sender.draggingSourceOperationMask.rawValue)")
+        return highlighted != nil
     }
 
-    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        highlighted != nil
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        highlighted = nil
+        guard let window, sender != nil, NSEvent.pressedMouseButtons & 1 == 1 else { return }
+        if window.frame.insetBy(dx: 1, dy: 1).contains(NSEvent.mouseLocation) {
+            onDragSessionEnded?()
+        }
+    }
+
+    override func draggingEnded(_ sender: NSDraggingInfo) {
+        highlighted = nil
+        onDragSessionEnded?()
     }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         updateHighlight(forWindowPoint: sender.draggingLocation)
+        DragDebug.log("performDragOperation highlighted=\(String(describing: highlighted)) mask=\(sender.draggingSourceOperationMask.rawValue)")
         guard let highlighted, highlighted < items.count else {
             onCancel?()
             return false

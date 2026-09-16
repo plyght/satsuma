@@ -55,6 +55,10 @@ final class RadialController: DragMonitorDelegate {
         }
     }
 
+    func dragMonitor(_ monitor: DragMonitor, didUpdateDraggedURLs urls: [URL]) {
+        adopt(urls)
+    }
+
     func dragMonitorDidEndDrag(_ monitor: DragMonitor) {
         guard !pickerMode else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
@@ -90,6 +94,8 @@ final class RadialController: DragMonitorDelegate {
         view.center = NSPoint(x: clamped.x - screen.frame.minX, y: clamped.y - screen.frame.minY)
         view.onSelect = { [weak self] item in self?.select(item) }
         view.onCancel = { [weak self] in self?.hide() }
+        view.onDragEntered = { [weak self] info in self?.adoptDraggedFiles(from: info) }
+        view.onDragSessionEnded = { [weak self] in self?.dragSessionEnded() }
         view.clearHighlight()
         reloadItems()
         panel.orderFrontRegardless()
@@ -103,10 +109,37 @@ final class RadialController: DragMonitorDelegate {
         )
     }
 
+    private func adoptDraggedFiles(from info: NSDraggingInfo) {
+        guard !pickerMode else { return }
+        let dragged = DragMonitor.fileURLs(on: info.draggingPasteboard)
+        DragDebug.log("drag entered wheel; pasteboard urls=\(dragged.map(\.lastPathComponent)) known=\(urls.map(\.lastPathComponent))")
+        adopt(dragged)
+    }
+
+    private func adopt(_ dragged: [URL]) {
+        guard !pickerMode, visible, !dragged.isEmpty, dragged != urls else { return }
+        urls = dragged
+        formats = dragged.compactMap(FileFormat.detect)
+        reloadItems()
+    }
+
+    private func dragSessionEnded() {
+        guard !pickerMode, visible else { return }
+        DragDebug.log("drag session ended while wheel visible; dismissing")
+        hide()
+        dragMonitor?.markHandled()
+    }
+
     private func reloadItems() {
         guard let view = panel?.radialView else { return }
         view.advancedMode = advanced
         let count = urls.count
+        if count == 0 {
+            view.items = []
+            view.subtitle = "Move the files over the wheel"
+            view.emptyMessage = advanced ? "Drop here for tools" : "Drop here to convert"
+            return
+        }
         view.subtitle = count == 1 ? urls[0].lastPathComponent : "\(count) files"
         if formats.count != urls.count {
             view.items = []
