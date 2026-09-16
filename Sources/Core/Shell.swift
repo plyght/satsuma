@@ -23,38 +23,50 @@ final class PipeBuffer: @unchecked Sendable {
     }
 }
 
+final class ProcessBox: @unchecked Sendable {
+    let process = Process()
+    func terminate() {
+        if process.isRunning { process.terminate() }
+    }
+}
+
 enum Shell {
     static func run(_ executable: String, _ arguments: [String], currentDirectory: URL? = nil) async throws -> ShellResult {
-        try await withCheckedThrowingContinuation { continuation in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: executable)
-            process.arguments = arguments
-            if let currentDirectory { process.currentDirectoryURL = currentDirectory }
-            let outPipe = Pipe()
-            let errPipe = Pipe()
-            process.standardOutput = outPipe
-            process.standardError = errPipe
-            let output = PipeBuffer()
-            let group = DispatchGroup()
-            group.enter()
-            DispatchQueue.global().async {
-                output.set(stdout: outPipe.fileHandleForReading.readDataToEndOfFile())
-                group.leave()
+        let box = ProcessBox()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                let process = box.process
+                process.executableURL = URL(fileURLWithPath: executable)
+                process.arguments = arguments
+                if let currentDirectory { process.currentDirectoryURL = currentDirectory }
+                let outPipe = Pipe()
+                let errPipe = Pipe()
+                process.standardOutput = outPipe
+                process.standardError = errPipe
+                let output = PipeBuffer()
+                let group = DispatchGroup()
+                group.enter()
+                DispatchQueue.global().async {
+                    output.set(stdout: outPipe.fileHandleForReading.readDataToEndOfFile())
+                    group.leave()
+                }
+                group.enter()
+                DispatchQueue.global().async {
+                    output.set(stderr: errPipe.fileHandleForReading.readDataToEndOfFile())
+                    group.leave()
+                }
+                process.terminationHandler = { proc in
+                    group.wait()
+                    continuation.resume(returning: output.result(status: proc.terminationStatus))
+                }
+                do {
+                    try process.run()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
             }
-            group.enter()
-            DispatchQueue.global().async {
-                output.set(stderr: errPipe.fileHandleForReading.readDataToEndOfFile())
-                group.leave()
-            }
-            process.terminationHandler = { proc in
-                group.wait()
-                continuation.resume(returning: output.result(status: proc.terminationStatus))
-            }
-            do {
-                try process.run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
+        } onCancel: {
+            box.terminate()
         }
     }
 

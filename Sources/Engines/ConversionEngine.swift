@@ -44,6 +44,7 @@ enum Engines {
         )
         do {
             try await engine.convert(staged)
+            try Task.checkCancellation()
             DiagnosticLog.log("engine finished, staged=\(temp.lastPathComponent)")
             var isDirectory: ObjCBool = false
             if FileManager.default.fileExists(atPath: temp.path, isDirectory: &isDirectory) {

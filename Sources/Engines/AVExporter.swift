@@ -44,8 +44,13 @@ enum AVExporter {
                 await MainActor.run { progress?(value) }
             }
         }
-        await session.export()
+        await withTaskCancellationHandler {
+            await session.export()
+        } onCancel: {
+            session.cancelExport()
+        }
         ticker.cancel()
+        try Task.checkCancellation()
         switch session.status {
         case .completed:
             progress?(1)

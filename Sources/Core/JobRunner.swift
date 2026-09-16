@@ -9,16 +9,18 @@ final class Job: ObservableObject, Identifiable {
     @Published var progress: Double = 0
     @Published var status: Status = .waiting
     var outputs: [URL] = []
+    var task: Task<Void, Never>?
 
     enum Status: Equatable {
         case waiting
         case running
         case done
+        case cancelled
         case failed(String)
 
         var isFinished: Bool {
             switch self {
-            case .done, .failed: return true
+            case .done, .cancelled, .failed: return true
             case .waiting, .running: return false
             }
         }
@@ -70,8 +72,12 @@ final class JobRunner: ObservableObject {
         DiagnosticLog.log("enqueue \(job.title) / \(job.detail); jobs=\(jobs.count)")
         showHUD()
         DiagnosticLog.log("hud shown")
-        Task {
+        job.task = Task {
             await semaphore.wait()
+            guard !Task.isCancelled else {
+                await semaphore.signal()
+                return
+            }
             DiagnosticLog.log("job running: \(job.detail)")
             job.status = .running
             let progress: (Double) -> Void = { value in
@@ -86,6 +92,12 @@ final class JobRunner: ObservableObject {
                 if AppSettings.shared.revealInFinder, !outputs.isEmpty {
                     NSWorkspace.shared.activateFileViewerSelecting(outputs)
                 }
+            } catch is CancellationError {
+                DiagnosticLog.log("job cancelled: \(job.detail)")
+                job.status = .cancelled
+            } catch SatsumaError.cancelled {
+                DiagnosticLog.log("job cancelled: \(job.detail)")
+                job.status = .cancelled
             } catch {
                 DiagnosticLog.log("job failed: \(job.detail): \(error)")
                 job.status = .failed(error.localizedDescription)
@@ -93,6 +105,19 @@ final class JobRunner: ObservableObject {
             await semaphore.signal()
             scheduleHide()
         }
+    }
+
+    func cancel(_ job: Job) {
+        DiagnosticLog.log("cancel requested: \(job.detail)")
+        job.task?.cancel()
+        dismiss(job)
+    }
+
+    func cancelAll() {
+        for job in jobs where !job.status.isFinished {
+            job.task?.cancel()
+        }
+        dismissAll()
     }
 
     func run(title: String, detail: String, work: @escaping (@escaping (Double) -> Void) async throws -> [URL]) {
@@ -127,12 +152,17 @@ final class JobRunner: ObservableObject {
     func dismiss(_ job: Job) {
         jobs.removeAll { $0.id == job.id }
         jobSubscriptions[job.id] = nil
-        if jobs.isEmpty { hud?.hide() }
+        if jobs.isEmpty {
+            hud?.hide()
+        } else {
+            hud?.show()
+        }
     }
 
     func dismissAll() {
         hideWorkItem?.cancel()
         jobs.removeAll()
+        jobSubscriptions.removeAll()
         hud?.hide()
     }
 }
@@ -197,7 +227,7 @@ final class JobHUDPanel: NSPanel, NSWindowDelegate, JobHUD {
     override var canBecomeKey: Bool { true }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        runner?.dismissAll()
+        runner?.cancelAll()
         return false
     }
 
@@ -228,7 +258,7 @@ final class JobPillPanel: NSPanel, JobHUD {
         hasShadow = false
         level = .statusBar
         isReleasedWhenClosed = false
-        ignoresMouseEvents = true
+        acceptsMouseMovedEvents = true
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         DiagnosticLog.log("pill panel created")
         let controller = NSHostingController(rootView: JobPillView(runner: runner))
@@ -253,8 +283,16 @@ final class JobPillPanel: NSPanel, JobHUD {
             centerX = (left.maxX + right.minX) / 2
         }
         DiagnosticLog.log("pill show size=\(size) screen=\(screen.frame) inset=\(screen.safeAreaInsets.top) centerX=\(centerX) top=\(top)")
-        setContentSize(size)
-        setFrameOrigin(NSPoint(x: (centerX - size.width / 2).rounded(), y: top - size.height - 2))
+        let target = NSRect(x: (centerX - size.width / 2).rounded(), y: top - size.height - 2, width: size.width, height: size.height)
+        if isVisible, frame != target {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.35
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                animator().setFrame(target, display: true)
+            }
+        } else {
+            setFrame(target, display: true)
+        }
         makeKeyAndOrderFront(nil)
         DiagnosticLog.log("pill ordered front")
     }
@@ -271,41 +309,78 @@ private extension CGSize {
 
 struct JobPillView: View {
     @ObservedObject var runner: JobRunner
+    @State private var hovering = false
+
+    var body: some View {
+        VStack(spacing: 6) {
+            ForEach(runner.jobs) { job in
+                JobPillRow(job: job, hovering: hovering) { runner.cancel(job) }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 7)
+        .frame(minHeight: 30)
+        .glassEffect(.regular, in: .rect(cornerRadius: 15))
+        .padding(4)
+        .contentShape(.rect)
+        .onHover { hovering = $0 }
+        .tint(Theme.accent)
+        .environment(\.appearsActive, true)
+        .animation(.easeInOut(duration: 0.35), value: runner.jobs.map(\.id))
+        .animation(.easeInOut(duration: 0.2), value: hovering)
+    }
+}
+
+struct JobPillRow: View {
+    @ObservedObject var job: Job
+    let hovering: Bool
+    let cancel: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: symbol)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(failed ? .red : Theme.accent)
-                .contentTransition(.symbolEffect(.replace))
+            Button(action: cancel) {
+                Image(systemName: showsCancel ? "xmark.circle.fill" : symbol)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .contentTransition(.symbolEffect(.replace))
+                    .frame(width: 16, height: 16)
+            }
+            .buttonStyle(.plain)
+            .disabled(!showsCancel)
+            .help(showsCancel ? "Cancel" : "")
             ProgressView(value: fraction)
                 .progressViewStyle(.linear)
                 .controlSize(.mini)
                 .frame(width: 96)
         }
-        .padding(.horizontal, 14)
-        .frame(height: 30)
-        .glassEffect(.regular, in: .capsule)
-        .padding(4)
-        .tint(Theme.accent)
-        .environment(\.appearsActive, true)
+        .frame(height: 16)
         .animation(.easeInOut(duration: 0.35), value: fraction)
     }
 
+    private var showsCancel: Bool { hovering && !job.status.isFinished }
+
     private var fraction: Double {
-        let jobs = runner.jobs
-        guard !jobs.isEmpty else { return 0 }
-        let total = jobs.reduce(0.0) { $0 + ($1.status == .done ? 1 : min(max($1.progress, 0), 1)) }
-        return total / Double(jobs.count)
+        job.status == .done ? 1 : min(max(job.progress, 0), 1)
     }
 
     private var failed: Bool {
-        runner.jobs.contains { if case .failed = $0.status { return true } else { return false } }
+        if case .failed = job.status { return true }
+        return false
+    }
+
+    private var tint: Color {
+        if failed { return .red }
+        return showsCancel ? .secondary : Theme.accent
     }
 
     private var symbol: String {
-        if failed { return "exclamationmark.triangle.fill" }
-        return runner.jobs.allSatisfy { $0.status.isFinished } ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath"
+        switch job.status {
+        case .failed: return "exclamationmark.triangle.fill"
+        case .done: return "checkmark.circle.fill"
+        case .cancelled: return "xmark.circle"
+        case .waiting, .running: return "arrow.triangle.2.circlepath"
+        }
     }
 }
 
@@ -361,6 +436,7 @@ struct JobCardView: View {
         case .waiting: return "\(job.detail) · Waiting"
         case .running: return "\(job.detail) · \(Int((job.progress * 100).rounded()))%"
         case .done: return "\(job.detail) · Done"
+        case .cancelled: return "\(job.detail) · Cancelled"
         case .failed(let message): return "\(job.detail) · \(message)"
         }
     }
@@ -372,6 +448,8 @@ struct JobCardView: View {
             Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.accent)
         case .failed:
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
+        case .cancelled:
+            Image(systemName: "xmark.circle").foregroundStyle(.secondary)
         case .waiting, .running:
             EmptyView()
         }

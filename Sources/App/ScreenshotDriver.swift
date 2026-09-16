@@ -124,6 +124,16 @@ enum ScreenshotDriver {
             }
             try await Task.sleep(nanoseconds: 1_500_000_000)
             try await screencapture("progress-\(style.rawValue)", ["-x", directory.appendingPathComponent("progress-\(style.rawValue).png").path])
+            if style == .pill {
+                JobRunner.shared.run(title: "Converting to PNG", detail: "photo.heic") { progress in
+                    progress(0.62)
+                    await gate.wait()
+                    return []
+                }
+                try await Task.sleep(nanoseconds: 1_500_000_000)
+                try await screencapture("progress-pill-multi", ["-x", directory.appendingPathComponent("progress-pill-multi.png").path])
+                await gate.signal()
+            }
             await gate.signal()
             try await Task.sleep(nanoseconds: 3_000_000_000)
         }

@@ -36,49 +36,54 @@ enum FFmpeg {
     }
 
     private static func runStreaming(_ executable: String, _ arguments: [String], duration: Double, progress: @escaping (Double) -> Void) async throws -> ShellResult {
-        try await withCheckedThrowingContinuation { continuation in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: executable)
-            process.arguments = arguments
-            let outPipe = Pipe()
-            let errPipe = Pipe()
-            process.standardOutput = outPipe
-            process.standardError = errPipe
-            let output = PipeBuffer()
-            let group = DispatchGroup()
-            group.enter()
-            DispatchQueue.global().async {
-                output.set(stderr: errPipe.fileHandleForReading.readDataToEndOfFile())
-                group.leave()
-            }
-            group.enter()
-            DispatchQueue.global().async {
-                let handle = outPipe.fileHandleForReading
-                var buffer = ""
-                while true {
-                    let chunk = handle.availableData
-                    if chunk.isEmpty { break }
-                    buffer += String(decoding: chunk, as: UTF8.self)
-                    while let range = buffer.range(of: "\n") {
-                        let line = String(buffer[..<range.lowerBound])
-                        buffer.removeSubrange(..<range.upperBound)
-                        if line.hasPrefix("out_time_ms="), let ms = Double(line.dropFirst(12)) {
-                            let fraction = min(1, max(0, ms / 1_000_000 / duration))
-                            DispatchQueue.main.async { progress(fraction) }
+        let box = ProcessBox()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                let process = box.process
+                process.executableURL = URL(fileURLWithPath: executable)
+                process.arguments = arguments
+                let outPipe = Pipe()
+                let errPipe = Pipe()
+                process.standardOutput = outPipe
+                process.standardError = errPipe
+                let output = PipeBuffer()
+                let group = DispatchGroup()
+                group.enter()
+                DispatchQueue.global().async {
+                    output.set(stderr: errPipe.fileHandleForReading.readDataToEndOfFile())
+                    group.leave()
+                }
+                group.enter()
+                DispatchQueue.global().async {
+                    let handle = outPipe.fileHandleForReading
+                    var buffer = ""
+                    while true {
+                        let chunk = handle.availableData
+                        if chunk.isEmpty { break }
+                        buffer += String(decoding: chunk, as: UTF8.self)
+                        while let range = buffer.range(of: "\n") {
+                            let line = String(buffer[..<range.lowerBound])
+                            buffer.removeSubrange(..<range.upperBound)
+                            if line.hasPrefix("out_time_ms="), let ms = Double(line.dropFirst(12)) {
+                                let fraction = min(1, max(0, ms / 1_000_000 / duration))
+                                DispatchQueue.main.async { progress(fraction) }
+                            }
                         }
                     }
+                    group.leave()
                 }
-                group.leave()
+                process.terminationHandler = { proc in
+                    group.wait()
+                    continuation.resume(returning: output.result(status: proc.terminationStatus))
+                }
+                do {
+                    try process.run()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
             }
-            process.terminationHandler = { proc in
-                group.wait()
-                continuation.resume(returning: output.result(status: proc.terminationStatus))
-            }
-            do {
-                try process.run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
+        } onCancel: {
+            box.terminate()
         }
     }
 
