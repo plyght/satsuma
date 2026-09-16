@@ -250,8 +250,10 @@ final class JobHUDPanel: NSPanel, NSWindowDelegate, JobHUD {
 
 final class JobPillPanel: NSPanel, JobHUD {
     private var hosting: NSHostingController<JobPillView>?
+    private weak var runner: JobRunner?
 
     init(runner: JobRunner) {
+        self.runner = runner
         super.init(contentRect: NSRect(x: 0, y: 0, width: 160, height: 32), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         isOpaque = false
         backgroundColor = .clear
@@ -272,11 +274,11 @@ final class JobPillPanel: NSPanel, JobHUD {
 
     func show() {
         let notchScreen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
-        guard let screen = notchScreen ?? NSScreen.main, let hosting else {
-            DiagnosticLog.log("pill show: no screen or hosting controller")
+        guard let screen = notchScreen ?? NSScreen.main else {
+            DiagnosticLog.log("pill show: no screen")
             return
         }
-        let size = hosting.sizeThatFits(in: unbounded).roundedUp.nonEmpty(or: frame.size)
+        let size = JobPillView.Layout.size(rows: max(1, runner?.jobs.count ?? 1))
         let top = screen.visibleFrame.maxY
         var centerX = screen.frame.midX
         if let left = screen.auxiliaryTopLeftArea, let right = screen.auxiliaryTopRightArea {
@@ -311,18 +313,36 @@ struct JobPillView: View {
     @ObservedObject var runner: JobRunner
     @State private var hovering = false
 
+    enum Layout {
+        static let rowHeight: CGFloat = 16
+        static let rowSpacing: CGFloat = 8
+        static let iconWidth: CGFloat = 16
+        static let iconSpacing: CGFloat = 8
+        static let barWidth: CGFloat = 96
+        static let margin: CGFloat = 4
+
+        static func horizontalPadding(rows: Int) -> CGFloat { rows > 1 ? 22 : 14 }
+        static func verticalPadding(rows: Int) -> CGFloat { rows > 1 ? 10 : 7 }
+
+        static func size(rows: Int) -> CGSize {
+            let width = iconWidth + iconSpacing + barWidth + 2 * horizontalPadding(rows: rows) + 2 * margin
+            let height = CGFloat(rows) * rowHeight + CGFloat(max(0, rows - 1)) * rowSpacing + 2 * verticalPadding(rows: rows) + 2 * margin
+            return CGSize(width: width, height: height)
+        }
+    }
+
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Layout.rowSpacing) {
             ForEach(runner.jobs) { job in
                 JobPillRow(job: job, hovering: hovering) { runner.cancel(job) }
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(.horizontal, runner.jobs.count > 1 ? 22 : 14)
-        .padding(.vertical, runner.jobs.count > 1 ? 10 : 7)
-        .frame(minHeight: 30)
+        .padding(.horizontal, Layout.horizontalPadding(rows: runner.jobs.count))
+        .padding(.vertical, Layout.verticalPadding(rows: runner.jobs.count))
+        .frame(minHeight: Layout.rowHeight + 2 * Layout.verticalPadding(rows: 1))
         .glassEffect(.regular, in: .rect(cornerRadius: 15))
-        .padding(4)
+        .padding(Layout.margin)
         .contentShape(.rect)
         .onHover { hovering = $0 }
         .tint(Theme.accent)
@@ -344,7 +364,7 @@ struct JobPillRow: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(tint)
                     .contentTransition(.symbolEffect(.replace))
-                    .frame(width: 16, height: 16)
+                    .frame(width: JobPillView.Layout.iconWidth, height: JobPillView.Layout.rowHeight)
             }
             .buttonStyle(.plain)
             .disabled(!showsCancel)
@@ -352,9 +372,9 @@ struct JobPillRow: View {
             ProgressView(value: fraction)
                 .progressViewStyle(.linear)
                 .controlSize(.mini)
-                .frame(width: 96)
+                .frame(width: JobPillView.Layout.barWidth)
         }
-        .frame(height: 16)
+        .frame(height: JobPillView.Layout.rowHeight)
         .animation(.easeInOut(duration: 0.35), value: fraction)
     }
 
