@@ -186,7 +186,8 @@ final class JobHUDPanel: NSPanel, NSWindowDelegate, JobHUD {
         guard let screen = NSScreen.main else { return }
         let visible = screen.visibleFrame
         contentView?.layoutSubtreeIfNeeded()
-        let size = frame.size
+        let size = contentView?.fittingSize ?? frame.size
+        setContentSize(size)
         setFrameOrigin(NSPoint(x: visible.maxX - size.width - 20, y: visible.maxY - size.height - 20))
         makeKeyAndOrderFront(nil)
     }
@@ -209,13 +210,16 @@ final class JobPillPanel: NSPanel, JobHUD {
         contentViewController = controller
     }
 
+    override var canBecomeKey: Bool { true }
+
     func show() {
-        guard let screen = NSScreen.main else { return }
-        contentView?.layoutSubtreeIfNeeded()
-        let size = frame.size
-        let top = screen.frame.maxY - screen.safeAreaInsets.top
-        setFrameOrigin(NSPoint(x: screen.frame.midX - size.width / 2, y: top - size.height - 6))
-        orderFrontRegardless()
+        guard let screen = NSScreen.main, let content = contentView else { return }
+        content.layoutSubtreeIfNeeded()
+        let size = content.fittingSize
+        setContentSize(size)
+        let top = screen.visibleFrame.maxY
+        setFrameOrigin(NSPoint(x: screen.frame.midX - size.width / 2, y: top - size.height - 2))
+        makeKeyAndOrderFront(nil)
     }
 
     func hide() { orderOut(nil) }
