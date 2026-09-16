@@ -30,7 +30,7 @@ struct RadialItem: Identifiable, Hashable {
 }
 
 struct RadialGeometry {
-    var innerRadius: CGFloat = 60
+    var innerRadius: CGFloat = 64
     var outerRadius: CGFloat = 150
     var gap: CGFloat = 4
     var count: Int
@@ -187,12 +187,13 @@ struct RadialWheelView: View {
 
     private var pill: some View {
         Text(title)
-            .font(.system(size: 14, weight: .semibold, design: .rounded))
+            .font(.system(size: 13, weight: .semibold, design: .rounded))
             .lineLimit(1)
-            .truncationMode(.middle)
-            .padding(.horizontal, 16)
-            .frame(height: 36)
-            .frame(maxWidth: geometry.innerRadius * 2 - 20)
+            .minimumScaleFactor(0.7)
+            .allowsTightening(true)
+            .padding(.horizontal, 12)
+            .frame(height: 34)
+            .frame(maxWidth: geometry.innerRadius * 2 - 8)
             .glassEffect(.regular, in: Capsule())
     }
 
