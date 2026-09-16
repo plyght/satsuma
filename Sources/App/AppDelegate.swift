@@ -74,6 +74,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.styleMask = [.titled, .closable, .miniaturizable, .fullSizeContentView]
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
+        window.toolbarStyle = .unified
+        let toolbar = NSToolbar(identifier: "SettingsToolbar")
+        toolbar.showsBaselineSeparator = false
+        window.toolbar = toolbar
         window.isMovableByWindowBackground = true
         window.isReleasedWhenClosed = false
         window.setContentSize(NSSize(width: SettingsView.width, height: SettingsView.height))

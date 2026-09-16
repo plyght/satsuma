@@ -205,6 +205,8 @@ struct SettingsTabBar: View {
                                 .labelStyle(.titleOnly)
                                 .font(.system(size: 13, weight: selection == tab ? .semibold : .regular))
                                 .foregroundStyle(selection == tab ? Color.white : Color.primary)
+                                .lineLimit(1)
+                                .fixedSize()
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 6)
                                 .contentShape(Capsule())
