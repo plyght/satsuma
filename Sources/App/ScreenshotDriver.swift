@@ -94,7 +94,7 @@ enum ScreenshotDriver {
             try await screencapture(["-x", directory.appendingPathComponent("radial-convert\(suffix).png").path])
             radial.hide()
             radial.presentPicker(for: [photo], advanced: true)
-            radial.highlight(4)
+            radial.highlight(0)
             try await Task.sleep(nanoseconds: 1_000_000_000)
             try await screencapture(["-x", directory.appendingPathComponent("radial-tools\(suffix).png").path])
             radial.hide()

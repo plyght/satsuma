@@ -234,6 +234,7 @@ struct JobCardView: View {
             ProgressView(value: job.status == .done ? 1 : job.progress)
                 .progressViewStyle(.linear)
                 .controlSize(.small)
+                .tint(Theme.accent)
         }
         .padding(16)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
