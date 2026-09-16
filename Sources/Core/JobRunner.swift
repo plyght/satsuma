@@ -6,6 +6,7 @@ final class Job: ObservableObject, Identifiable {
     let id = UUID()
     let title: String
     let detail: String
+    let symbol: String
     @Published var progress: Double = 0
     @Published var status: Status = .waiting
     var outputs: [URL] = []
@@ -26,9 +27,10 @@ final class Job: ObservableObject, Identifiable {
         }
     }
 
-    init(title: String, detail: String) {
+    init(title: String, detail: String, symbol: String = "arrow.triangle.2.circlepath") {
         self.title = title
         self.detail = detail
+        self.symbol = symbol
     }
 }
 
@@ -57,7 +59,7 @@ final class JobRunner: ObservableObject {
             let destination = ConversionMatrix.outputURL(for: url, target: target, in: directory, existing: reserved)
             DiagnosticLog.log("destination \(destination.path)")
             reserved.insert(destination.lastPathComponent)
-            let job = Job(title: "Converting to \(target.displayName)", detail: url.lastPathComponent)
+            let job = Job(title: "Converting to \(target.displayName)", detail: url.lastPathComponent, symbol: target.category.symbol)
             enqueue(job) { progress in
                 let request = ConversionRequest(source: url, sourceFormat: source, target: target, destination: destination, progress: progress)
                 try await Engines.convert(request)
@@ -120,8 +122,8 @@ final class JobRunner: ObservableObject {
         dismissAll()
     }
 
-    func run(title: String, detail: String, work: @escaping (@escaping (Double) -> Void) async throws -> [URL]) {
-        enqueue(Job(title: title, detail: detail), work: work)
+    func run(title: String, detail: String, symbol: String = "arrow.triangle.2.circlepath", work: @escaping (@escaping (Double) -> Void) async throws -> [URL]) {
+        enqueue(Job(title: title, detail: detail, symbol: symbol), work: work)
     }
 
     private func showHUD() {
@@ -319,13 +321,15 @@ struct JobPillView: View {
         static let iconWidth: CGFloat = 16
         static let iconSpacing: CGFloat = 8
         static let barWidth: CGFloat = 96
+        static let labelWidth: CGFloat = 92
         static let margin: CGFloat = 4
 
-        static func horizontalPadding(rows: Int) -> CGFloat { rows > 1 ? 22 : 14 }
-        static func verticalPadding(rows: Int) -> CGFloat { rows > 1 ? 10 : 7 }
+        static func horizontalPadding(rows: Int) -> CGFloat { rows > 1 ? 24 : 14 }
+        static func verticalPadding(rows: Int) -> CGFloat { rows > 1 ? 12 : 7 }
+        static func labelSpan(rows: Int) -> CGFloat { rows > 1 ? labelWidth + iconSpacing : 0 }
 
         static func size(rows: Int) -> CGSize {
-            let width = iconWidth + iconSpacing + barWidth + 2 * horizontalPadding(rows: rows) + 2 * margin
+            let width = iconWidth + iconSpacing + labelSpan(rows: rows) + barWidth + 2 * horizontalPadding(rows: rows) + 2 * margin
             let height = CGFloat(rows) * rowHeight + CGFloat(max(0, rows - 1)) * rowSpacing + 2 * verticalPadding(rows: rows) + 2 * margin
             return CGSize(width: width, height: height)
         }
@@ -334,7 +338,7 @@ struct JobPillView: View {
     var body: some View {
         VStack(spacing: Layout.rowSpacing) {
             ForEach(runner.jobs) { job in
-                JobPillRow(job: job, hovering: hovering) { runner.cancel(job) }
+                JobPillRow(job: job, hovering: hovering, showsLabel: runner.jobs.count > 1) { runner.cancel(job) }
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
@@ -355,10 +359,11 @@ struct JobPillView: View {
 struct JobPillRow: View {
     @ObservedObject var job: Job
     let hovering: Bool
+    let showsLabel: Bool
     let cancel: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: JobPillView.Layout.iconSpacing) {
             Button(action: cancel) {
                 Image(systemName: showsCancel ? "xmark.circle.fill" : symbol)
                     .font(.system(size: 11, weight: .semibold))
@@ -369,6 +374,14 @@ struct JobPillRow: View {
             .buttonStyle(.plain)
             .disabled(!showsCancel)
             .help(showsCancel ? "Cancel" : "")
+            if showsLabel {
+                Text(job.detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(width: JobPillView.Layout.labelWidth, alignment: .leading)
+            }
             ProgressView(value: fraction)
                 .progressViewStyle(.linear)
                 .controlSize(.mini)
@@ -399,7 +412,7 @@ struct JobPillRow: View {
         case .failed: return "exclamationmark.triangle.fill"
         case .done: return "checkmark.circle.fill"
         case .cancelled: return "xmark.circle"
-        case .waiting, .running: return "arrow.triangle.2.circlepath"
+        case .waiting, .running: return job.symbol
         }
     }
 }

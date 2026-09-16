@@ -117,7 +117,7 @@ enum ScreenshotDriver {
             AppSettings.shared.progressStyle = style
             let gate = AsyncSemaphore(limit: 1)
             await gate.wait()
-            JobRunner.shared.run(title: "Compressing", detail: "geese.mov") { progress in
+            JobRunner.shared.run(title: "Compressing", detail: "geese.mov", symbol: ToolID.compress.symbol) { progress in
                 progress(0.16)
                 await gate.wait()
                 return []
@@ -125,7 +125,7 @@ enum ScreenshotDriver {
             try await Task.sleep(nanoseconds: 1_500_000_000)
             try await screencapture("progress-\(style.rawValue)", ["-x", directory.appendingPathComponent("progress-\(style.rawValue).png").path])
             if style == .pill {
-                JobRunner.shared.run(title: "Converting to PNG", detail: "photo.heic") { progress in
+                JobRunner.shared.run(title: "Converting to PNG", detail: "photo.heic", symbol: "photo") { progress in
                     progress(0.62)
                     await gate.wait()
                     return []
