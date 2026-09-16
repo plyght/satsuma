@@ -245,9 +245,13 @@ final class JobPillPanel: NSPanel, JobHUD {
         content.layoutSubtreeIfNeeded()
         let size = content.fittingSize.roundedUp
         let top = screen.visibleFrame.maxY
-        DiagnosticLog.log("pill show size=\(size) screen=\(screen.frame) inset=\(screen.safeAreaInsets.top) top=\(top)")
+        var centerX = screen.frame.midX
+        if let left = screen.auxiliaryTopLeftArea, let right = screen.auxiliaryTopRightArea {
+            centerX = (left.maxX + right.minX) / 2
+        }
+        DiagnosticLog.log("pill show size=\(size) screen=\(screen.frame) inset=\(screen.safeAreaInsets.top) centerX=\(centerX) top=\(top)")
         setContentSize(size)
-        setFrameOrigin(NSPoint(x: (screen.frame.midX - size.width / 2).rounded(), y: top - size.height - 2))
+        setFrameOrigin(NSPoint(x: (centerX - size.width / 2).rounded(), y: top - size.height - 2))
         makeKeyAndOrderFront(nil)
         DiagnosticLog.log("pill ordered front")
     }
