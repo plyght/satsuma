@@ -32,9 +32,7 @@ struct VideoSnapshotsToolView: View {
 
     var body: some View {
         ToolShell(session: session, saveTitle: "Save \(plannedTimes.count) frame\(plannedTimes.count == 1 ? "" : "s")", saveEnabled: !plannedTimes.isEmpty, onSave: save) {
-            VStack(spacing: 10) {
-                PlayerSurface(player: media.player).background(Color.black)
-                TransportBar(controller: media)
+            VideoStage(player: media.player) {
                 RangeTrack(duration: media.duration, start: .constant(0), end: .constant(0), playhead: media.currentTime, markers: plannedTimes, onScrub: { media.seek($0) })
                     .frame(height: 28)
                 if !intervalMode {
@@ -61,7 +59,6 @@ struct VideoSnapshotsToolView: View {
                     .frame(height: 100)
                 }
             }
-            .padding(12)
         } sidebar: {
             SidebarSection(title: "Frames") {
                 Toggle("Every N seconds", isOn: $intervalMode)

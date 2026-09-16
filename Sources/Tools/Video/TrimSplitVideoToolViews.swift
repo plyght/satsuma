@@ -15,13 +15,9 @@ struct TrimVideoToolView: View {
 
     var body: some View {
         ToolShell(session: session, saveTitle: "Trim", saveEnabled: end > start, onSave: save) {
-            VStack(spacing: 10) {
-                PlayerSurface(player: media.player)
-                    .background(Color.black)
-                TransportBar(controller: media)
+            VideoStage(player: media.player) {
                 RangeTrack(duration: media.duration, start: $start, end: $end, playhead: media.currentTime, onScrub: { media.seek($0) })
             }
-            .padding(12)
         } sidebar: {
             SidebarSection(title: "Range") {
                 TimecodeField(title: "Start", seconds: $start, maximum: media.duration)
@@ -95,12 +91,9 @@ struct SplitVideoToolView: View {
 
     var body: some View {
         ToolShell(session: session, saveTitle: "Split into \(effectivePoints.count + 1) clips", saveEnabled: !effectivePoints.isEmpty, onSave: save) {
-            VStack(spacing: 10) {
-                PlayerSurface(player: media.player).background(Color.black)
-                TransportBar(controller: media)
+            VideoStage(player: media.player) {
                 RangeTrack(duration: media.duration, start: $unusedStart, end: $unusedEnd, playhead: media.currentTime, markers: effectivePoints, onScrub: { media.seek($0) })
             }
-            .padding(12)
         } sidebar: {
             SidebarSection(title: "Split") {
                 Picker("", selection: $mode) {

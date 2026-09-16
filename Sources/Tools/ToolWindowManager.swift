@@ -44,7 +44,7 @@ final class ToolWindowManager: NSObject, NSWindowDelegate {
         window.isMovableByWindowBackground = false
         window.isReleasedWhenClosed = false
         window.setContentSize(Self.preferredSize(for: tool))
-        window.minSize = NSSize(width: 560, height: 400)
+        window.minSize = Self.minimumSize(for: tool)
         window.center()
         window.delegate = self
         window.identifier = NSUserInterfaceItemIdentifier(session.id.uuidString)
@@ -63,18 +63,55 @@ final class ToolWindowManager: NSObject, NSWindowDelegate {
         windows.removeValue(forKey: uuid)
     }
 
+    enum WindowClass {
+        case compact, standard, editor
+
+        var sidebarWidth: CGFloat {
+            switch self {
+            case .compact: return 260
+            case .standard: return 290
+            case .editor: return 320
+            }
+        }
+    }
+
+    static func windowClass(for tool: ToolID) -> WindowClass {
+        switch tool {
+        case .compress, .resizeImage, .createPDF, .mergePDF, .splitPDF, .audioChannels, .rotateImage:
+            return .compact
+        case .editMetadata, .normalizeAudio, .organizePDF, .createCollage, .joinVideos, .audioToVideo, .trimAudio, .redactAudio:
+            return .standard
+        default:
+            return .editor
+        }
+    }
+
     static func preferredSize(for tool: ToolID) -> NSSize {
         switch tool {
         case .compress:
             return NSSize(width: 640, height: 560)
-        case .resizeImage, .createPDF, .mergePDF, .splitPDF:
-            return NSSize(width: 720, height: 560)
-        case .editMetadata, .rotateImage, .audioChannels, .normalizeAudio:
-            return NSSize(width: 820, height: 600)
+        case .resizeImage:
+            return NSSize(width: 620, height: 400)
+        case .createPDF, .mergePDF:
+            return NSSize(width: 680, height: 440)
+        case .splitPDF, .audioChannels:
+            return NSSize(width: 720, height: 460)
+        case .rotateImage:
+            return NSSize(width: 760, height: 500)
+        case .editMetadata, .normalizeAudio, .trimAudio, .redactAudio, .audioToVideo:
+            return NSSize(width: 820, height: 560)
         case .organizePDF, .createCollage, .joinVideos:
-            return NSSize(width: 960, height: 660)
+            return NSSize(width: 940, height: 620)
         default:
             return NSSize(width: 1040, height: 700)
+        }
+    }
+
+    static func minimumSize(for tool: ToolID) -> NSSize {
+        switch windowClass(for: tool) {
+        case .compact: return NSSize(width: 560, height: 360)
+        case .standard: return NSSize(width: 640, height: 440)
+        case .editor: return NSSize(width: 760, height: 520)
         }
     }
 }
@@ -112,7 +149,7 @@ struct ToolRootView: View {
             case .splitPDF: SplitPDFToolView(session: session)
             }
         }
-        .frame(minWidth: 560, minHeight: 420)
+        .frame(minWidth: 560, minHeight: 360)
     }
 }
 
@@ -168,22 +205,25 @@ struct ToolShell<Content: View, Sidebar: View>: View {
     @ViewBuilder var content: () -> Content
     @ViewBuilder var sidebar: () -> Sidebar
 
+    private var windowClass: ToolWindowManager.WindowClass { ToolWindowManager.windowClass(for: session.tool) }
+
     var body: some View {
+        let compact = windowClass == .compact
         WindowChrome(session: session, saveTitle: saveTitle, saveEnabled: saveEnabled, onSave: onSave) {
-            HStack(spacing: 16) {
+            HStack(spacing: compact ? 12 : 16) {
                 content()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .clipShape(RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous))
                     .card()
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: compact ? 10 : 12) {
                         sidebar()
                     }
                 }
                 .scrollIndicators(.automatic)
-                .frame(width: 320)
+                .frame(width: windowClass.sidebarWidth)
             }
-            .padding(20)
+            .padding(compact ? 14 : 20)
         }
     }
 }

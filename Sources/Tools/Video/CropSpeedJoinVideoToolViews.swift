@@ -119,11 +119,8 @@ struct VideoSpeedToolView: View {
 
     var body: some View {
         ToolShell(session: session, saveTitle: "Save copy", onSave: save) {
-            VStack(spacing: 10) {
-                PlayerSurface(player: media.player).background(Color.black)
-                TransportBar(controller: media)
-            }
-            .padding(12)
+            PlayerSurface(player: media.player)
+                .background(Color.black)
         } sidebar: {
             SidebarSection(title: "Speed") {
                 LabeledSlider(title: "Factor", value: $factor, range: 0.1...8) { String(format: "%.2f×", $0) }

@@ -102,7 +102,7 @@ final class MediaController: ObservableObject {
 
 struct PlayerSurface: NSViewRepresentable {
     let player: AVPlayer
-    var showsControls = false
+    var showsControls = true
 
     func makeNSView(context: Context) -> AVPlayerView {
         let view = AVPlayerView()
@@ -110,11 +110,31 @@ struct PlayerSurface: NSViewRepresentable {
         view.controlsStyle = showsControls ? .inline : .none
         view.videoGravity = .resizeAspect
         view.showsFullScreenToggleButton = false
+        view.showsFrameSteppingButtons = true
+        view.allowsPictureInPicturePlayback = false
+        view.updatesNowPlayingInfoCenter = false
         return view
     }
 
     func updateNSView(_ nsView: AVPlayerView, context: Context) {
         if nsView.player !== player { nsView.player = player }
+    }
+}
+
+struct VideoStage<Footer: View>: View {
+    let player: AVPlayer
+    @ViewBuilder var footer: () -> Footer
+
+    var body: some View {
+        VStack(spacing: 0) {
+            PlayerSurface(player: player)
+                .background(Color.black)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            VStack(spacing: 10) {
+                footer()
+            }
+            .padding(12)
+        }
     }
 }
 

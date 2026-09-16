@@ -1,6 +1,6 @@
 # Satsuma
 
-The zero-click offline file converter for macOS. Hold **Shift** while dragging files in Finder to convert them; add **Option** to open advanced tools. Everything runs locally on your Mac — nothing is uploaded, and the original file is never modified.
+The zero-click offline file converter for macOS. Hold **Shift** while dragging files in Finder to convert them; add **Option** to open advanced tools. Everything runs locally on your Mac; nothing is uploaded, and the original file is never modified.
 
 Satsuma is an open-source reimplementation of the Tangerine workflow: 188 conversion options across images, video, audio, documents, subtitles and archives, and 25 advanced file tools.
 
@@ -60,7 +60,7 @@ brisk test             # compile and run Tests/ with the app sources
 brisk archive --release
 ```
 
-Satsuma needs **no Accessibility or Input Monitoring permission**. While the mouse button is down it polls `NSEvent.pressedMouseButtons`, `NSEvent.modifierFlags`, `NSEvent.mouseLocation` and the system drag pasteboard (`NSPasteboard(name: .drag)`) — all readable by any app — so it can tell that a Finder drag is in flight with Shift held and show the wheel, which is itself a normal drop target. It never installs key-event monitors or event taps. Notifications are optional.
+Satsuma needs **no Accessibility or Input Monitoring permission**. While the mouse button is down it polls `NSEvent.pressedMouseButtons`, `NSEvent.modifierFlags`, `NSEvent.mouseLocation` and the system drag pasteboard (`NSPasteboard(name: .drag)`) (all readable by any app) so it can tell that a Finder drag is in flight with Shift held and show the wheel, which is itself a normal drop target. It never installs key-event monitors or event taps. Notifications are optional.
 
 ## Quality gates
 

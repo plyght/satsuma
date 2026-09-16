@@ -139,7 +139,7 @@ enum Notifier {
         guard AppSettings.shared.showNotifications else { return }
         let content = UNMutableNotificationContent()
         content.title = "Satsuma finished"
-        content.body = job.outputs.count == 1 ? job.outputs[0].lastPathComponent : "\(job.title) — \(job.outputs.count) files"
+        content.body = job.outputs.count == 1 ? job.outputs[0].lastPathComponent : "\(job.title): \(job.outputs.count) files"
         content.sound = .default
         deliver(content)
     }

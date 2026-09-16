@@ -31,7 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = item.button {
             button.image = NSImage(systemSymbolName: "circle.hexagongrid.circle", accessibilityDescription: "Satsuma")
-            button.toolTip = "Satsuma — hold Shift while dragging a file"
+            button.toolTip = "Satsuma: hold Shift while dragging a file"
         }
         let menu = NSMenu()
         menu.addItem(withTitle: "Convert Files…", action: #selector(convertFiles), keyEquivalent: "o").target = self

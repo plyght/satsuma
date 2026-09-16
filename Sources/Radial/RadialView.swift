@@ -43,11 +43,11 @@ struct RadialGeometry {
         return max(4, min(wanted, limit))
     }
 
-    var labelRadius: CGFloat { (innerRadius + outerRadius) / 2 }
+    var labelRadius: CGFloat { innerRadius + (outerRadius - innerRadius) * 0.56 }
 
     var labelWidth: CGFloat {
         let chord = 2 * labelRadius * sin(slice / 2)
-        return max(24, min(chord - 2 * corner, outerRadius - innerRadius))
+        return max(24, chord - 6)
     }
 
     func angles(for index: Int) -> (start: CGFloat, end: CGFloat) {
