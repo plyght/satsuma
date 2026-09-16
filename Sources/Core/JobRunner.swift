@@ -175,6 +175,8 @@ final class JobHUDPanel: NSPanel {
         contentView = NSHostingView(rootView: JobHUDView(runner: runner))
     }
 
+    override var canBecomeKey: Bool { true }
+
     func show() {
         guard let screen = NSScreen.main else { return }
         let visible = screen.visibleFrame
@@ -182,7 +184,11 @@ final class JobHUDPanel: NSPanel {
         let size = contentView?.fittingSize ?? NSSize(width: 340, height: 100)
         setContentSize(size)
         setFrameOrigin(NSPoint(x: visible.maxX - size.width - 20, y: visible.maxY - size.height - 20))
-        orderFrontRegardless()
+        if NSApp.isActive {
+            orderFrontRegardless()
+        } else {
+            makeKeyAndOrderFront(nil)
+        }
     }
 
     func hide() { orderOut(nil) }
