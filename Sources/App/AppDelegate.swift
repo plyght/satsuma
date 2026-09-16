@@ -71,9 +71,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.sizingOptions = []
         let window = NSWindow(contentViewController: controller)
         window.title = "Satsuma Settings"
-        window.styleMask = [.titled, .closable, .miniaturizable]
+        window.styleMask = [.titled, .closable, .miniaturizable, .fullSizeContentView]
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.isMovableByWindowBackground = true
         window.isReleasedWhenClosed = false
-        window.setContentSize(NSSize(width: 480, height: 640))
+        window.setContentSize(NSSize(width: SettingsView.width, height: SettingsView.height))
         window.center()
         return window
     }
