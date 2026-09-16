@@ -184,11 +184,7 @@ final class JobHUDPanel: NSPanel {
         let size = contentView?.fittingSize ?? NSSize(width: 340, height: 100)
         setContentSize(size)
         setFrameOrigin(NSPoint(x: visible.maxX - size.width - 20, y: visible.maxY - size.height - 20))
-        if NSApp.isActive {
-            orderFrontRegardless()
-        } else {
-            makeKeyAndOrderFront(nil)
-        }
+        makeKeyAndOrderFront(nil)
     }
 
     func hide() { orderOut(nil) }
