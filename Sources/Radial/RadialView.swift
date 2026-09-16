@@ -176,9 +176,10 @@ struct RadialWheelView: View {
                 .symbolRenderingMode(.monochrome)
             Text(item.label)
                 .font(.system(size: dense ? 10 : 11.5, weight: .bold, design: .rounded))
-                .kerning(0.6)
+                .kerning(dense ? 0.3 : 0.6)
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.6)
+                .allowsTightening(true)
         }
         .foregroundStyle(selected ? Color.white : Color.primary)
         .contentTransition(.identity)
