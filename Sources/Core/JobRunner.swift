@@ -111,6 +111,12 @@ final class JobRunner: ObservableObject {
         jobs.removeAll { $0.id == job.id }
         if jobs.isEmpty { hud?.hide() }
     }
+
+    func dismissAll() {
+        hideWorkItem?.cancel()
+        jobs.removeAll()
+        hud?.hide()
+    }
 }
 
 actor AsyncSemaphore {
@@ -162,20 +168,32 @@ enum Notifier {
     }
 }
 
-final class JobHUDPanel: NSPanel {
+final class JobHUDPanel: NSPanel, NSWindowDelegate {
+    private weak var runner: JobRunner?
+
     init(runner: JobRunner) {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 340, height: 100), styleMask: [.borderless, .nonactivatingPanel, .utilityWindow], backing: .buffered, defer: false)
+        self.runner = runner
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 340, height: 100), styleMask: [.titled, .closable, .fullSizeContentView, .nonactivatingPanel, .utilityWindow], backing: .buffered, defer: false)
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = false
+        titlebarAppearsTransparent = true
+        titleVisibility = .hidden
+        standardWindowButton(.miniaturizeButton)?.isHidden = true
+        standardWindowButton(.zoomButton)?.isHidden = true
         level = .floating
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isMovableByWindowBackground = true
+        delegate = self
         contentView = NSHostingView(rootView: JobHUDView(runner: runner))
     }
 
     override var canBecomeKey: Bool { true }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        runner?.dismissAll()
+        return false
+    }
 
     func show() {
         guard let screen = NSScreen.main else { return }
@@ -194,35 +212,29 @@ struct JobHUDView: View {
     @ObservedObject var runner: JobRunner
 
     var body: some View {
-        GlassEffectContainer(spacing: 10) {
-            VStack(spacing: 10) {
-                ForEach(runner.jobs) { job in
-                    JobCardView(job: job) { runner.dismiss(job) }
-                }
+        VStack(alignment: .leading, spacing: 14) {
+            ForEach(Array(runner.jobs.enumerated()), id: \.element.id) { index, job in
+                if index > 0 { Divider() }
+                JobCardView(job: job)
             }
         }
-        .padding(12)
+        .padding(.top, 12)
+        .padding(.leading, 40)
+        .padding(.trailing, 16)
+        .padding(.bottom, 16)
         .frame(width: 340)
+        .glassEffect(.regular, in: .rect)
+        .ignoresSafeArea()
         .tint(Theme.accent)
-        .environment(\.appearsActive, true)
     }
 }
 
 struct JobCardView: View {
     @ObservedObject var job: Job
-    var dismiss: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                Button(action: dismiss) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .bold))
-                        .frame(width: 26, height: 26)
-                }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .help("Dismiss")
                 Text(job.title)
                     .font(.system(size: 15, weight: .semibold))
                     .lineLimit(1)
@@ -237,10 +249,7 @@ struct JobCardView: View {
             ProgressView(value: fraction)
                 .progressViewStyle(.linear)
                 .controlSize(.small)
-                .tint(Theme.accent)
         }
-        .padding(16)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private var fraction: CGFloat {
