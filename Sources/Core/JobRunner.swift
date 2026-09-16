@@ -202,6 +202,7 @@ struct JobHUDView: View {
         .padding(12)
         .frame(width: 340)
         .tint(Theme.accent)
+        .environment(\.appearsActive, true)
     }
 }
 
@@ -231,16 +232,10 @@ struct JobCardView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(.quaternary)
-                    Capsule()
-                        .fill(Theme.accent)
-                        .frame(width: max(6, proxy.size.width * fraction))
-                        .animation(.easeOut(duration: 0.25), value: fraction)
-                }
-            }
-            .frame(height: 5)
+            ProgressView(value: fraction)
+                .progressViewStyle(.linear)
+                .controlSize(.small)
+                .tint(Theme.accent)
         }
         .padding(16)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
