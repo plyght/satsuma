@@ -36,7 +36,7 @@ final class SettingsTabModel: ObservableObject {
 struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
     @ObservedObject var model: SettingsTabModel
-    @State private var ffmpegStatus = FFmpeg.path
+    @State private var ffmpegHealth: FFmpeg.Health = .missing
 
     static let width: CGFloat = 520
     static let height: CGFloat = 500
@@ -56,7 +56,7 @@ struct SettingsView: View {
         .animation(.easeInOut(duration: 0.18), value: model.tab)
         .frame(width: Self.width, height: Self.height)
         .tint(Theme.accent)
-        .onChange(of: settings.ffmpegPath) { ffmpegStatus = FFmpeg.path }
+        .task(id: settings.ffmpegPath) { ffmpegHealth = await FFmpeg.checkHealth() }
     }
 
     @ViewBuilder private var general: some View {
@@ -138,10 +138,10 @@ struct SettingsView: View {
                     .textFieldStyle(.roundedBorder)
                 Button("Choose…") { chooseFFmpeg() }
             }
-            HStack(spacing: 6) {
-                Image(systemName: ffmpegStatus == nil ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                    .foregroundStyle(ffmpegStatus == nil ? .orange : .green)
-                Text(ffmpegStatus.map { "Using \($0)" } ?? "FFmpeg not found. Install with `brew install ffmpeg` or pick the binary.")
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Image(systemName: ffmpegHealthSymbol)
+                    .foregroundStyle(ffmpegHealthColor)
+                Text(ffmpegHealthText)
                     .font(.caption)
                     .textSelection(.enabled)
             }
@@ -172,6 +172,30 @@ struct SettingsView: View {
             LabeledContent("Tools", value: "\(ToolID.total)")
         } footer: {
             Text("Hold Shift while dragging files to convert. Add Option for advanced tools. Everything runs on this Mac; nothing is uploaded.")
+        }
+    }
+
+    private var ffmpegHealthSymbol: String {
+        switch ffmpegHealth {
+        case .ready: return "checkmark.circle.fill"
+        case .broken: return "xmark.octagon.fill"
+        case .missing: return "exclamationmark.triangle.fill"
+        }
+    }
+
+    private var ffmpegHealthColor: Color {
+        switch ffmpegHealth {
+        case .ready: return .green
+        case .broken: return .red
+        case .missing: return .orange
+        }
+    }
+
+    private var ffmpegHealthText: String {
+        switch ffmpegHealth {
+        case let .ready(path, version): return "Using ffmpeg \(version) at \(path)"
+        case let .broken(path, reason): return "ffmpeg at \(path) cannot run: \(reason)"
+        case .missing: return "FFmpeg not found. Install with `wax install ffmpeg` or pick the binary."
         }
     }
 

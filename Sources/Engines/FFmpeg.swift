@@ -17,6 +17,37 @@ enum FFmpeg {
 
     static var isAvailable: Bool { path != nil }
 
+    enum Health: Equatable {
+        case missing
+        case broken(path: String, reason: String)
+        case ready(path: String, version: String)
+    }
+
+    static func checkHealth() async -> Health {
+        guard let ffmpeg = path else { return .missing }
+        do {
+            let result = try await Shell.run(ffmpeg, ["-hide_banner", "-version"])
+            let firstLine = result.stdout.split(separator: "\n").first.map(String.init) ?? ""
+            guard result.succeeded, firstLine.hasPrefix("ffmpeg version") else {
+                return .broken(path: ffmpeg, reason: summarize(result.stderr.isEmpty ? result.stdout : result.stderr))
+            }
+            let version = firstLine.replacingOccurrences(of: "ffmpeg version ", with: "")
+                .split(separator: " ").first.map(String.init) ?? ""
+            return .ready(path: ffmpeg, version: version)
+        } catch {
+            return .broken(path: ffmpeg, reason: error.localizedDescription)
+        }
+    }
+
+    static func summarize(_ output: String) -> String {
+        let lines = output.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        if let dyld = lines.first(where: { $0.contains("Library not loaded") }) {
+            let library = dyld.components(separatedBy: "Library not loaded: ").last.map { ($0 as NSString).lastPathComponent } ?? ""
+            return "missing library \(library). Reinstall ffmpeg and its dependencies (for example `wax reinstall ffmpeg`)."
+        }
+        return lines.last(where: { !$0.hasPrefix("Referenced from") && !$0.hasPrefix("Reason:") }) ?? output
+    }
+
     @discardableResult
     static func run(_ arguments: [String], purpose: String, duration: Double? = nil, progress: ((Double) -> Void)? = nil) async throws -> ShellResult {
         guard let ffmpeg = path else { throw SatsumaError.ffmpegMissing(purpose) }
@@ -30,7 +61,7 @@ enum FFmpeg {
             result = try await Shell.run(ffmpeg, args)
         }
         guard result.succeeded else {
-            throw SatsumaError.toolFailed("ffmpeg", result.stderr.isEmpty ? result.stdout : result.stderr)
+            throw SatsumaError.toolFailed("ffmpeg", summarize(result.stderr.isEmpty ? result.stdout : result.stderr))
         }
         return result
     }
