@@ -111,7 +111,7 @@ struct VideoSnapshotsToolView: View {
         let format = format
         let quality = AppSettings.shared.jpegQuality
         let folder = ConversionMatrix.uniqueDirectory(directory: session.outputDirectory, name: "\(session.baseName) frames")
-        session.run(title: "Save \(times.count) frames") { progress in
+        session.run(title: "Saving", detail: "\(times.count) frames") { progress in
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             var outputs: [URL] = []
             for (index, time) in times.enumerated() {
@@ -264,7 +264,7 @@ struct RedactVideoToolView: View {
             return r
         }
         let destination = session.outputURL(suffix: "redacted", ext: "mp4")
-        session.run(title: "Redact \(url.lastPathComponent)") { progress in
+        session.run(title: "Redacting", detail: "\(url.lastPathComponent)") { progress in
             try await VideoOps.redact(url, redactions: redactions, displaySize: size, to: destination, progress: progress)
             return [destination]
         }

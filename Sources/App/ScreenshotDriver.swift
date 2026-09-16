@@ -112,6 +112,18 @@ enum ScreenshotDriver {
         }
         NSApp.appearance = AppearanceMode.light.appearance
 
+        let gate = AsyncSemaphore(limit: 1)
+        await gate.wait()
+        JobRunner.shared.run(title: "Compressing", detail: "geese.mov") { progress in
+            progress(0.16)
+            await gate.wait()
+            return []
+        }
+        try await Task.sleep(nanoseconds: 1_500_000_000)
+        try await screencapture("progress", ["-x", directory.appendingPathComponent("progress.png").path])
+        await gate.signal()
+        try await Task.sleep(nanoseconds: 300_000_000)
+
         let settings = AppDelegate.makeSettingsWindow()
         settings.makeKeyAndOrderFront(nil)
         try await Task.sleep(nanoseconds: 1_500_000_000)

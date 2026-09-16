@@ -38,7 +38,7 @@ struct MergePDFToolView: View {
     private func save() {
         let files = files
         let destination = session.outputURL(suffix: "merged", ext: "pdf")
-        session.run(title: "Merge \(files.count) PDFs") { _ in
+        session.run(title: "Merging", detail: "\(files.count) PDFs") { _ in
             try PDFOps.merge(files, to: destination)
             return [destination]
         }
@@ -123,7 +123,7 @@ struct SplitPDFToolView: View {
     private func save() {
         let url = session.primary, mode = mode, every = every, ranges = ranges
         let folder = ConversionMatrix.uniqueDirectory(directory: session.outputDirectory, name: "\(session.baseName) pages")
-        session.run(title: "Split \(url.lastPathComponent)") { _ in
+        session.run(title: "Splitting", detail: "\(url.lastPathComponent)") { _ in
             try PDFOps.split(url, mode: mode, every: every, ranges: ranges, into: folder)
         }
     }
@@ -256,7 +256,7 @@ struct OrganizePDFToolView: View {
     private func save() {
         let pages = pages
         let destination = session.outputURL(suffix: "organized", ext: "pdf")
-        session.run(title: "Organize \(session.primary.lastPathComponent)") { _ in
+        session.run(title: "Organizing", detail: "\(session.primary.lastPathComponent)") { _ in
             try PDFOps.assemble(pages: pages, to: destination)
             return [destination]
         }

@@ -94,7 +94,7 @@ struct ResizeImageToolView: View {
 
     private func save() {
         let mode = mode, longEdge = longEdge, percent = percent, width = width, height = height, lockAspect = lockAspect
-        ImageToolSupport.saveEach(session, suffix: "resized", title: "Resize \(session.files.count) image\(session.files.count == 1 ? "" : "s")") { _, image in
+        ImageToolSupport.saveEach(session, suffix: "resized", title: "Resizing", detail: "\(session.files.count) image\(session.files.count == 1 ? "" : "s")") { _, image in
             let size = CGSize(width: image.width, height: image.height)
             let target: CGSize
             switch mode {
@@ -168,7 +168,7 @@ struct RotateImageToolView: View {
 
     private func save() {
         let turns = quarterTurns, h = flipH, v = flipV
-        ImageToolSupport.saveEach(session, suffix: "rotated", title: "Rotate \(session.files.count) image\(session.files.count == 1 ? "" : "s")") { _, image in
+        ImageToolSupport.saveEach(session, suffix: "rotated", title: "Rotating", detail: "\(session.files.count) image\(session.files.count == 1 ? "" : "s")") { _, image in
             ImageOps.rotated(image, quarterTurns: turns, flipHorizontal: h, flipVertical: v)
         }
     }

@@ -18,7 +18,7 @@ enum ImageToolSupport {
         let destination = session.outputURL(suffix: suffix, ext: output.fileExtension)
         let quality = AppSettings.shared.jpegQuality
         let metadata = ImageIOBridge.properties(session.primary)
-        session.run(title: title ?? "\(session.tool.title) \(session.primary.lastPathComponent)") { progress in
+        session.run(title: title ?? session.tool.progressTitle, detail: session.primary.lastPathComponent) { progress in
             let image = try await render()
             progress(0.7)
             if ImageIOBridge.canEncodeNatively(output) {
@@ -34,14 +34,14 @@ enum ImageToolSupport {
     }
 
     @MainActor
-    static func saveEach(_ session: ToolSession, suffix: String, title: String, render: @escaping (URL, CGImage) throws -> CGImage) {
+    static func saveEach(_ session: ToolSession, suffix: String, title: String, detail: String, render: @escaping (URL, CGImage) throws -> CGImage) {
         let files = session.files
         let quality = AppSettings.shared.jpegQuality
         let destinations = files.map { url -> (URL, FileFormat) in
             let output = outputFormat(for: url)
             return (ConversionMatrix.uniqueURL(directory: AppSettings.shared.outputLocation.directory(for: url), baseName: ConversionMatrix.strippedBaseName(url.lastPathComponent), suffix: suffix, ext: output.fileExtension), output)
         }
-        session.run(title: title) { progress in
+        session.run(title: title, detail: detail) { progress in
             var outputs: [URL] = []
             for (index, url) in files.enumerated() {
                 let (destination, output) = destinations[index]

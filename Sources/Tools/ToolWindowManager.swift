@@ -372,8 +372,8 @@ struct TimecodeField: View {
 
 extension ToolSession {
     @MainActor
-    func run(title: String, work: @escaping (@escaping (Double) -> Void) async throws -> [URL]) {
+    func run(title: String, detail: String, work: @escaping (@escaping (Double) -> Void) async throws -> [URL]) {
         ToolWindowManager.shared.close(self)
-        JobRunner.shared.run(title: title, work: work)
+        JobRunner.shared.run(title: title, detail: detail, work: work)
     }
 }

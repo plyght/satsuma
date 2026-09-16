@@ -65,6 +65,32 @@ enum ToolID: String, CaseIterable, Identifiable {
         }
     }
 
+    var progressTitle: String {
+        switch self {
+        case .compress: return "Compressing"
+        case .editMetadata: return "Editing metadata"
+        case .editImage: return "Editing photo"
+        case .frameImage: return "Adding background"
+        case .cropImage, .cropVideo: return "Cropping"
+        case .redactImage, .redactVideo: return "Redacting"
+        case .resizeImage: return "Resizing"
+        case .rotateImage: return "Rotating"
+        case .createPDF: return "Creating PDF"
+        case .createCollage: return "Creating collage"
+        case .trimVideo, .trimAudio: return "Trimming"
+        case .changeVideoSpeed: return "Changing speed"
+        case .joinVideos: return "Joining"
+        case .videoSnapshots: return "Saving frames"
+        case .splitVideo, .splitPDF: return "Splitting"
+        case .normalizeAudio: return "Normalizing"
+        case .audioToVideo: return "Creating visualizer"
+        case .audioChannels: return "Converting channels"
+        case .redactAudio: return "Bleeping"
+        case .mergePDF: return "Merging"
+        case .organizePDF: return "Organizing"
+        }
+    }
+
     var radialLabel: String {
         switch self {
         case .compress: return "COMPRESS"

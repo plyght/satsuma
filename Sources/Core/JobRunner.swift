@@ -6,6 +6,7 @@ import UserNotifications
 final class Job: ObservableObject, Identifiable {
     let id = UUID()
     let title: String
+    let detail: String
     @Published var progress: Double = 0
     @Published var status: Status = .waiting
     var outputs: [URL] = []
@@ -24,7 +25,10 @@ final class Job: ObservableObject, Identifiable {
         }
     }
 
-    init(title: String) { self.title = title }
+    init(title: String, detail: String) {
+        self.title = title
+        self.detail = detail
+    }
 }
 
 @MainActor
@@ -45,7 +49,7 @@ final class JobRunner: ObservableObject {
             let directory = AppSettings.shared.outputLocation.directory(for: url)
             let destination = ConversionMatrix.outputURL(for: url, target: target, in: directory, existing: reserved)
             reserved.insert(destination.lastPathComponent)
-            let job = Job(title: "\(url.lastPathComponent) → \(target.displayName)")
+            let job = Job(title: "Converting to \(target.displayName)", detail: url.lastPathComponent)
             enqueue(job) { progress in
                 let request = ConversionRequest(source: url, sourceFormat: source, target: target, destination: destination, progress: progress)
                 try await Engines.convert(request)
@@ -81,8 +85,8 @@ final class JobRunner: ObservableObject {
         }
     }
 
-    func run(title: String, work: @escaping (@escaping (Double) -> Void) async throws -> [URL]) {
-        enqueue(Job(title: title), work: work)
+    func run(title: String, detail: String, work: @escaping (@escaping (Double) -> Void) async throws -> [URL]) {
+        enqueue(Job(title: title, detail: detail), work: work)
     }
 
     private func showHUD() {
@@ -139,7 +143,7 @@ enum Notifier {
         guard AppSettings.shared.showNotifications else { return }
         let content = UNMutableNotificationContent()
         content.title = "Satsuma finished"
-        content.body = job.outputs.count == 1 ? job.outputs[0].lastPathComponent : "\(job.title): \(job.outputs.count) files"
+        content.body = job.outputs.count == 1 ? job.outputs[0].lastPathComponent : "\(job.detail): \(job.outputs.count) files"
         content.sound = .default
         deliver(content)
     }
@@ -148,7 +152,7 @@ enum Notifier {
         guard AppSettings.shared.showNotifications else { return }
         let content = UNMutableNotificationContent()
         content.title = "Satsuma couldn't finish"
-        content.body = "\(job.title): \(error.localizedDescription)"
+        content.body = "\(job.detail): \(error.localizedDescription)"
         deliver(content)
     }
 
@@ -160,10 +164,10 @@ enum Notifier {
 
 final class JobHUDPanel: NSPanel {
     init(runner: JobRunner) {
-        super.init(contentRect: NSRect(x: 0, y: 0, width: 320, height: 120), styleMask: [.borderless, .nonactivatingPanel, .utilityWindow], backing: .buffered, defer: false)
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 340, height: 100), styleMask: [.borderless, .nonactivatingPanel, .utilityWindow], backing: .buffered, defer: false)
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = true
+        hasShadow = false
         level = .floating
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -175,9 +179,9 @@ final class JobHUDPanel: NSPanel {
         guard let screen = NSScreen.main else { return }
         let visible = screen.visibleFrame
         contentView?.layoutSubtreeIfNeeded()
-        let size = contentView?.fittingSize ?? NSSize(width: 320, height: 120)
+        let size = contentView?.fittingSize ?? NSSize(width: 340, height: 100)
         setContentSize(size)
-        setFrameOrigin(NSPoint(x: visible.maxX - size.width - 20, y: visible.minY + 20))
+        setFrameOrigin(NSPoint(x: visible.maxX - size.width - 20, y: visible.maxY - size.height - 20))
         orderFrontRegardless()
     }
 
@@ -188,40 +192,71 @@ struct JobHUDView: View {
     @ObservedObject var runner: JobRunner
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(runner.jobs) { job in
-                JobRowView(job: job) { runner.dismiss(job) }
+        GlassEffectContainer(spacing: 10) {
+            VStack(spacing: 10) {
+                ForEach(runner.jobs) { job in
+                    JobCardView(job: job) { runner.dismiss(job) }
+                }
             }
         }
-        .padding(14)
-        .frame(width: 320)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(12)
+        .frame(width: 340)
+        .tint(Theme.accent)
     }
 }
 
-struct JobRowView: View {
+struct JobCardView: View {
     @ObservedObject var job: Job
     var dismiss: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(job.title).font(.callout).lineLimit(1).truncationMode(.middle)
-                Spacer()
-                switch job.status {
-                case .done:
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                case .failed:
-                    Button(action: dismiss) { Image(systemName: "xmark.circle.fill").foregroundStyle(.red) }.buttonStyle(.plain)
-                default:
-                    ProgressView().controlSize(.small)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Button(action: dismiss) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .frame(width: 26, height: 26)
                 }
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .help("Dismiss")
+                Text(job.title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                trailing
             }
-            if case .failed(let message) = job.status {
-                Text(message).font(.caption2).foregroundStyle(.secondary).lineLimit(3)
-            } else {
-                ProgressView(value: job.status == .done ? 1 : job.progress).progressViewStyle(.linear)
-            }
+            Text(subtitle)
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            ProgressView(value: job.status == .done ? 1 : job.progress)
+                .progressViewStyle(.linear)
+                .controlSize(.small)
+        }
+        .padding(16)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var subtitle: String {
+        switch job.status {
+        case .waiting: return "\(job.detail) · Waiting"
+        case .running: return "\(job.detail) · \(Int((job.progress * 100).rounded()))%"
+        case .done: return "\(job.detail) · Done"
+        case .failed(let message): return "\(job.detail) · \(message)"
+        }
+    }
+
+    @ViewBuilder
+    private var trailing: some View {
+        switch job.status {
+        case .done:
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.accent)
+        case .failed:
+            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
+        case .waiting, .running:
+            EmptyView()
         }
     }
 }

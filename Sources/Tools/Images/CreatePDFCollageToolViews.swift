@@ -130,7 +130,7 @@ struct CreatePDFToolView: View {
         let files = files
         let pageSize = pageMode.size
         let destination = session.outputURL(suffix: files.count > 1 ? "combined" : "", ext: "pdf")
-        session.run(title: "Create PDF") { progress in
+        session.run(title: "Creating PDF", detail: "\(files.count) image\(files.count == 1 ? "" : "s")") { progress in
             if let pageSize {
                 try PDFRenderer.writeImagesPDF(files, pageSize: pageSize, to: destination, progress: progress)
             } else {
@@ -241,7 +241,7 @@ struct CollageToolView: View {
     private func save() {
         let files = files
         let o = options
-        ImageToolSupport.save(session, suffix: "collage", format: .jpg, title: "Create collage") {
+        ImageToolSupport.save(session, suffix: "collage", format: .jpg, title: "Creating collage") {
             let images = try files.map { try ImageIOBridge.load($0, maxPixelSize: 4000) }
             guard let cg = ImageOps.collage(images, options: o) else { throw SatsumaError.encodeFailed("Collage rendering failed") }
             return cg
