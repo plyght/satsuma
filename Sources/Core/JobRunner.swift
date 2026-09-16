@@ -170,6 +170,7 @@ protocol JobHUD: AnyObject {
 
 final class JobHUDPanel: NSPanel, NSWindowDelegate, JobHUD {
     private weak var runner: JobRunner?
+    private var hosting: NSHostingController<JobHUDView>?
 
     init(runner: JobRunner) {
         self.runner = runner
@@ -188,6 +189,7 @@ final class JobHUDPanel: NSPanel, NSWindowDelegate, JobHUD {
         DiagnosticLog.log("card panel created")
         let controller = NSHostingController(rootView: JobHUDView(runner: runner))
         controller.sizingOptions = []
+        hosting = controller
         contentViewController = controller
         DiagnosticLog.log("card hosting controller attached")
     }
@@ -205,8 +207,7 @@ final class JobHUDPanel: NSPanel, NSWindowDelegate, JobHUD {
             return
         }
         let visible = screen.visibleFrame
-        contentView?.layoutSubtreeIfNeeded()
-        let size = (contentView?.fittingSize ?? frame.size).roundedUp
+        let size = (hosting?.sizeThatFits(in: unbounded) ?? .zero).roundedUp.nonEmpty(or: frame.size)
         DiagnosticLog.log("card show size=\(size) visible=\(visible)")
         setContentSize(size)
         setFrameOrigin(NSPoint(x: visible.maxX - size.width - 20, y: visible.maxY - size.height - 20))
@@ -218,6 +219,8 @@ final class JobHUDPanel: NSPanel, NSWindowDelegate, JobHUD {
 }
 
 final class JobPillPanel: NSPanel, JobHUD {
+    private var hosting: NSHostingController<JobPillView>?
+
     init(runner: JobRunner) {
         super.init(contentRect: NSRect(x: 0, y: 0, width: 160, height: 32), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         isOpaque = false
@@ -230,6 +233,7 @@ final class JobPillPanel: NSPanel, JobHUD {
         DiagnosticLog.log("pill panel created")
         let controller = NSHostingController(rootView: JobPillView(runner: runner))
         controller.sizingOptions = []
+        hosting = controller
         contentViewController = controller
         DiagnosticLog.log("pill hosting controller attached")
     }
@@ -238,12 +242,11 @@ final class JobPillPanel: NSPanel, JobHUD {
 
     func show() {
         let notchScreen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
-        guard let screen = notchScreen ?? NSScreen.main, let content = contentView else {
-            DiagnosticLog.log("pill show: no screen or content view")
+        guard let screen = notchScreen ?? NSScreen.main, let hosting else {
+            DiagnosticLog.log("pill show: no screen or hosting controller")
             return
         }
-        content.layoutSubtreeIfNeeded()
-        let size = content.fittingSize.roundedUp
+        let size = hosting.sizeThatFits(in: unbounded).roundedUp.nonEmpty(or: frame.size)
         let top = screen.visibleFrame.maxY
         var centerX = screen.frame.midX
         if let left = screen.auxiliaryTopLeftArea, let right = screen.auxiliaryTopRightArea {
@@ -259,8 +262,11 @@ final class JobPillPanel: NSPanel, JobHUD {
     func hide() { orderOut(nil) }
 }
 
+private let unbounded = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+
 private extension CGSize {
     var roundedUp: CGSize { CGSize(width: ceil(width), height: ceil(height)) }
+    func nonEmpty(or fallback: CGSize) -> CGSize { width > 0 && height > 0 ? self : fallback }
 }
 
 struct JobPillView: View {
