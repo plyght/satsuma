@@ -65,6 +65,20 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
     }
 }
 
+enum ProgressStyle: String, CaseIterable, Identifiable {
+    case card
+    case pill
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .card: return "Card"
+        case .pill: return "Notch pill"
+        }
+    }
+}
+
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
 
@@ -86,8 +100,8 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(revealInFinder, forKey: "revealInFinder") }
     }
 
-    @Published var showNotifications: Bool {
-        didSet { defaults.set(showNotifications, forKey: "showNotifications") }
+    @Published var progressStyle: ProgressStyle {
+        didSet { defaults.set(progressStyle.rawValue, forKey: "progressStyle") }
     }
 
     @Published var ffmpegPath: String {
@@ -114,7 +128,7 @@ final class AppSettings: ObservableObject {
         compressionResizeLongEdge = defaults.integer(forKey: "compressionResizeLongEdge")
         outputLocation = OutputLocation(rawValue: defaults.string(forKey: "outputLocation") ?? "") ?? .besideOriginal
         revealInFinder = defaults.object(forKey: "revealInFinder") as? Bool ?? true
-        showNotifications = defaults.object(forKey: "showNotifications") as? Bool ?? true
+        progressStyle = ProgressStyle(rawValue: defaults.string(forKey: "progressStyle") ?? "") ?? .card
         ffmpegPath = defaults.string(forKey: "ffmpegPath") ?? ""
         jpegQuality = defaults.object(forKey: "jpegQuality") as? Double ?? 0.9
         appearanceMode = AppearanceMode(rawValue: defaults.string(forKey: "appearanceMode") ?? "") ?? .system

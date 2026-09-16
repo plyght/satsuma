@@ -22,7 +22,6 @@ frameworks = [
   "PDFKit",
   "Quartz",
   "UniformTypeIdentifiers",
-  "UserNotifications",
   "ServiceManagement",
 ]
 swift_flags = ["-swift-version", "5"]

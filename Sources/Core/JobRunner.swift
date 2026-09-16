@@ -1,7 +1,6 @@
 import AppKit
 import Combine
 import SwiftUI
-import UserNotifications
 
 final class Job: ObservableObject, Identifiable {
     let id = UUID()
@@ -36,7 +35,8 @@ final class JobRunner: ObservableObject {
     static let shared = JobRunner()
 
     @Published private(set) var jobs: [Job] = []
-    private var hud: JobHUDPanel?
+    private var hud: JobHUD?
+    private var hudStyle: ProgressStyle?
     private var hideWorkItem: DispatchWorkItem?
     private let semaphore = AsyncSemaphore(limit: 2)
 
@@ -72,13 +72,11 @@ final class JobRunner: ObservableObject {
                 job.outputs = outputs
                 job.progress = 1
                 job.status = .done
-                Notifier.completed(job)
                 if AppSettings.shared.revealInFinder, !outputs.isEmpty {
                     NSWorkspace.shared.activateFileViewerSelecting(outputs)
                 }
             } catch {
                 job.status = .failed(error.localizedDescription)
-                Notifier.failed(job, error: error)
             }
             await semaphore.signal()
             scheduleHide()
@@ -91,7 +89,12 @@ final class JobRunner: ObservableObject {
 
     private func showHUD() {
         hideWorkItem?.cancel()
-        if hud == nil { hud = JobHUDPanel(runner: self) }
+        let style = AppSettings.shared.progressStyle
+        if hud == nil || hudStyle != style {
+            hud?.hide()
+            hud = style == .card ? JobHUDPanel(runner: self) : JobPillPanel(runner: self)
+            hudStyle = style
+        }
         hud?.show()
     }
 
@@ -144,31 +147,13 @@ actor AsyncSemaphore {
     }
 }
 
-enum Notifier {
-    static func completed(_ job: Job) {
-        guard AppSettings.shared.showNotifications else { return }
-        let content = UNMutableNotificationContent()
-        content.title = "Satsuma finished"
-        content.body = job.outputs.count == 1 ? job.outputs[0].lastPathComponent : "\(job.detail): \(job.outputs.count) files"
-        content.sound = .default
-        deliver(content)
-    }
-
-    static func failed(_ job: Job, error: Error) {
-        guard AppSettings.shared.showNotifications else { return }
-        let content = UNMutableNotificationContent()
-        content.title = "Satsuma couldn't finish"
-        content.body = "\(job.detail): \(error.localizedDescription)"
-        deliver(content)
-    }
-
-    private static func deliver(_ content: UNMutableNotificationContent) {
-        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(request) { _ in }
-    }
+@MainActor
+protocol JobHUD: AnyObject {
+    func show()
+    func hide()
 }
 
-final class JobHUDPanel: NSPanel, NSWindowDelegate {
+final class JobHUDPanel: NSPanel, NSWindowDelegate, JobHUD {
     private weak var runner: JobRunner?
 
     init(runner: JobRunner) {
@@ -185,7 +170,9 @@ final class JobHUDPanel: NSPanel, NSWindowDelegate {
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isMovableByWindowBackground = true
         delegate = self
-        contentView = NSHostingView(rootView: JobHUDView(runner: runner))
+        let controller = NSHostingController(rootView: JobHUDView(runner: runner))
+        controller.sizingOptions = [.preferredContentSize]
+        contentViewController = controller
     }
 
     override var canBecomeKey: Bool { true }
@@ -199,13 +186,79 @@ final class JobHUDPanel: NSPanel, NSWindowDelegate {
         guard let screen = NSScreen.main else { return }
         let visible = screen.visibleFrame
         contentView?.layoutSubtreeIfNeeded()
-        let size = contentView?.fittingSize ?? NSSize(width: 340, height: 100)
-        setContentSize(size)
+        let size = frame.size
         setFrameOrigin(NSPoint(x: visible.maxX - size.width - 20, y: visible.maxY - size.height - 20))
         makeKeyAndOrderFront(nil)
     }
 
     func hide() { orderOut(nil) }
+}
+
+final class JobPillPanel: NSPanel, JobHUD {
+    init(runner: JobRunner) {
+        super.init(contentRect: NSRect(x: 0, y: 0, width: 160, height: 32), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        isOpaque = false
+        backgroundColor = .clear
+        hasShadow = false
+        level = .statusBar
+        isReleasedWhenClosed = false
+        ignoresMouseEvents = true
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        let controller = NSHostingController(rootView: JobPillView(runner: runner))
+        controller.sizingOptions = [.preferredContentSize]
+        contentViewController = controller
+    }
+
+    func show() {
+        guard let screen = NSScreen.main else { return }
+        contentView?.layoutSubtreeIfNeeded()
+        let size = frame.size
+        let top = screen.frame.maxY - screen.safeAreaInsets.top
+        setFrameOrigin(NSPoint(x: screen.frame.midX - size.width / 2, y: top - size.height - 6))
+        orderFrontRegardless()
+    }
+
+    func hide() { orderOut(nil) }
+}
+
+struct JobPillView: View {
+    @ObservedObject var runner: JobRunner
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(failed ? .red : Theme.accent)
+                .contentTransition(.symbolEffect(.replace))
+            ProgressView(value: fraction)
+                .progressViewStyle(.linear)
+                .controlSize(.mini)
+                .frame(width: 96)
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 30)
+        .glassEffect(.regular, in: .capsule)
+        .padding(4)
+        .tint(Theme.accent)
+        .environment(\.appearsActive, true)
+        .animation(.default, value: fraction)
+    }
+
+    private var fraction: Double {
+        let jobs = runner.jobs
+        guard !jobs.isEmpty else { return 0 }
+        let total = jobs.reduce(0.0) { $0 + ($1.status == .done ? 1 : min(max($1.progress, 0), 1)) }
+        return total / Double(jobs.count)
+    }
+
+    private var failed: Bool {
+        runner.jobs.contains { if case .failed = $0.status { return true } else { return false } }
+    }
+
+    private var symbol: String {
+        if failed { return "exclamationmark.triangle.fill" }
+        return runner.jobs.allSatisfy { $0.status.isFinished } ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath"
+    }
 }
 
 struct JobHUDView: View {
@@ -223,8 +276,7 @@ struct JobHUDView: View {
         .padding(.trailing, 16)
         .padding(.bottom, 16)
         .frame(width: 340)
-        .glassEffect(.regular, in: .rect)
-        .ignoresSafeArea()
+        .background { Color.clear.glassEffect(.regular, in: .rect).ignoresSafeArea() }
         .tint(Theme.accent)
     }
 }

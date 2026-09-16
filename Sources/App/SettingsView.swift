@@ -11,7 +11,6 @@ struct SettingsView: View {
                     ForEach(OutputLocation.allCases) { Text($0.title).tag($0) }
                 }
                 Toggle("Reveal results in Finder", isOn: $settings.revealInFinder)
-                Toggle("Show a notification when done", isOn: $settings.showNotifications)
                 Toggle("Launch Satsuma at login", isOn: $settings.launchAtLogin)
             }
             Section("Appearance") {
@@ -19,6 +18,15 @@ struct SettingsView: View {
                     ForEach(AppearanceMode.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
+                Picker("Progress", selection: $settings.progressStyle) {
+                    ForEach(ProgressStyle.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                Text(settings.progressStyle == .card
+                     ? "A floating card in the top right corner with the file name and percentage."
+                     : "A tiny progress bar in a pill below the notch.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             Section("Images") {
                 HStack {

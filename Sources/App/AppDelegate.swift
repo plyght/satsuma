@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import UserNotifications
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
@@ -16,7 +15,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ScreenshotDriver.run(radial: radial)
             return
         }
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
         dragMonitor.delegate = radial
         dragMonitor.start()
     }

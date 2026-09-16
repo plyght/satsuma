@@ -60,7 +60,7 @@ brisk test             # compile and run Tests/ with the app sources
 brisk archive --release
 ```
 
-Satsuma needs **no Accessibility or Input Monitoring permission**. During a Finder drag it polls `NSEvent.pressedMouseButtons`, `NSEvent.modifierFlags`, `NSEvent.mouseLocation` and the system drag pasteboard (`NSPasteboard(name: .drag)`). If Finder has not published the file URLs yet, Shift plus sustained drag movement shows a generic drop target immediately; the wheel then reads the files from the drag pasteboard or `NSDraggingInfo` as soon as they become available. It never installs key-event monitors or event taps. Notifications are optional.
+Satsuma needs **no Accessibility or Input Monitoring permission**. During a Finder drag it polls `NSEvent.pressedMouseButtons`, `NSEvent.modifierFlags`, `NSEvent.mouseLocation` and the system drag pasteboard (`NSPasteboard(name: .drag)`). If Finder has not published the file URLs yet, Shift plus sustained drag movement shows a generic drop target immediately; the wheel then reads the files from the drag pasteboard or `NSDraggingInfo` as soon as they become available. It never installs key-event monitors or event taps. Progress shows in a floating card or a small pill under the notch (Settings > Appearance); there are no system notifications.
 
 ## Quality gates
 
@@ -84,7 +84,7 @@ Sources/Formats            FileFormat enum, ConversionMatrix (188 options, outpu
 Sources/Engines            Conversion engines: image, audio, video, document, subtitle, archive, ffmpeg bridge
 Sources/Operations         Tool backends: ImageOps, VideoOps, AudioOps, PDFOps, MetadataOps, Compressor
 Sources/Radial             Global drag/modifier monitor and the radial menu overlay
-Sources/Core               Job runner, progress HUD, notifications, shell, media probing
+Sources/Core               Job runner, progress HUD (card and notch pill), shell, media probing
 Sources/Tools              Tool window shell, tool registry and the 25 tool views
 Tests                      Direct Swift tests run by `brisk test`
 ```
