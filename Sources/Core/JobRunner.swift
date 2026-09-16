@@ -231,13 +231,23 @@ struct JobCardView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
-            ProgressView(value: job.status == .done ? 1 : job.progress)
-                .progressViewStyle(.linear)
-                .controlSize(.small)
-                .tint(Theme.accent)
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(.quaternary)
+                    Capsule()
+                        .fill(Theme.accent)
+                        .frame(width: max(6, proxy.size.width * fraction))
+                        .animation(.easeOut(duration: 0.25), value: fraction)
+                }
+            }
+            .frame(height: 5)
         }
         .padding(16)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var fraction: CGFloat {
+        job.status == .done ? 1 : CGFloat(min(max(job.progress, 0), 1))
     }
 
     private var subtitle: String {
