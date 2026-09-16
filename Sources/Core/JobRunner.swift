@@ -39,6 +39,7 @@ final class JobRunner: ObservableObject {
     private var hudStyle: ProgressStyle?
     private var hideWorkItem: DispatchWorkItem?
     private let semaphore = AsyncSemaphore(limit: 2)
+    private var jobSubscriptions: [UUID: AnyCancellable] = [:]
 
     private init() {}
 
@@ -65,6 +66,7 @@ final class JobRunner: ObservableObject {
 
     func enqueue(_ job: Job, work: @escaping (@escaping (Double) -> Void) async throws -> [URL]) {
         jobs.append(job)
+        jobSubscriptions[job.id] = job.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
         DiagnosticLog.log("enqueue \(job.title) / \(job.detail); jobs=\(jobs.count)")
         showHUD()
         DiagnosticLog.log("hud shown")
@@ -116,6 +118,7 @@ final class JobRunner: ObservableObject {
             guard let self else { return }
             self.hud?.hide()
             self.jobs.removeAll()
+            self.jobSubscriptions.removeAll()
         }
         hideWorkItem = item
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5, execute: item)
@@ -123,6 +126,7 @@ final class JobRunner: ObservableObject {
 
     func dismiss(_ job: Job) {
         jobs.removeAll { $0.id == job.id }
+        jobSubscriptions[job.id] = nil
         if jobs.isEmpty { hud?.hide() }
     }
 
@@ -233,16 +237,17 @@ final class JobPillPanel: NSPanel, JobHUD {
     override var canBecomeKey: Bool { true }
 
     func show() {
-        guard let screen = NSScreen.main, let content = contentView else {
-            DiagnosticLog.log("pill show: no main screen or content view")
+        let notchScreen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
+        guard let screen = notchScreen ?? NSScreen.main, let content = contentView else {
+            DiagnosticLog.log("pill show: no screen or content view")
             return
         }
         content.layoutSubtreeIfNeeded()
         let size = content.fittingSize.roundedUp
         let top = screen.visibleFrame.maxY
-        DiagnosticLog.log("pill show size=\(size) screen=\(screen.frame) top=\(top)")
+        DiagnosticLog.log("pill show size=\(size) screen=\(screen.frame) inset=\(screen.safeAreaInsets.top) top=\(top)")
         setContentSize(size)
-        setFrameOrigin(NSPoint(x: screen.frame.midX - size.width / 2, y: top - size.height - 2))
+        setFrameOrigin(NSPoint(x: (screen.frame.midX - size.width / 2).rounded(), y: top - size.height - 2))
         makeKeyAndOrderFront(nil)
         DiagnosticLog.log("pill ordered front")
     }
@@ -274,7 +279,7 @@ struct JobPillView: View {
         .padding(4)
         .tint(Theme.accent)
         .environment(\.appearsActive, true)
-        .animation(.default, value: fraction)
+        .animation(.easeInOut(duration: 0.35), value: fraction)
     }
 
     private var fraction: Double {
