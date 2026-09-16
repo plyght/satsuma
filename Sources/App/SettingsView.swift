@@ -40,6 +40,7 @@ struct SettingsView: View {
                 HStack {
                     Text("Resize long edge to")
                     TextField("Off", value: $settings.compressionResizeLongEdge, format: .number)
+                        .labelsHidden()
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 80)
                     Text("px (0 = keep size)").foregroundStyle(.secondary)
