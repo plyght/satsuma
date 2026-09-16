@@ -226,9 +226,18 @@ struct SettingsTabBar: View {
     }
 }
 
+final class SettingsWindow: NSWindow {
+    var toolbarDelegate: SettingsToolbarDelegate?
+}
+
+@MainActor
 final class SettingsToolbarDelegate: NSObject, NSToolbarDelegate {
     static let tabsItem = NSToolbarItem.Identifier("satsuma.settings.tabs")
-    var model: SettingsTabModel?
+    let model: SettingsTabModel
+
+    init(model: SettingsTabModel) {
+        self.model = model
+    }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [.flexibleSpace, Self.tabsItem, .flexibleSpace]
@@ -243,7 +252,7 @@ final class SettingsToolbarDelegate: NSObject, NSToolbarDelegate {
         itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
         willBeInsertedIntoToolbar flag: Bool
     ) -> NSToolbarItem? {
-        guard itemIdentifier == Self.tabsItem, let model else { return nil }
+        guard itemIdentifier == Self.tabsItem else { return nil }
         let item = NSToolbarItem(itemIdentifier: itemIdentifier)
         let hosting = NSHostingView(rootView: SettingsTabBar(model: model))
         hosting.sizingOptions = [.intrinsicContentSize]
