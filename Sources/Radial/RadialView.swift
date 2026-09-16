@@ -228,7 +228,15 @@ final class RadialView: NSView {
     var interactive = false
     var advancedMode = false { didSet { refresh() } }
 
-    private(set) var highlighted: Int? { didSet { if oldValue != highlighted { refresh() } } }
+    private(set) var highlighted: Int? {
+        didSet {
+            guard oldValue != highlighted else { return }
+            if highlighted != nil {
+                NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .drawCompleted)
+            }
+            refresh()
+        }
+    }
     private var trackingArea: NSTrackingArea?
     private let host: PassthroughHostingView<RadialWheelView>
 

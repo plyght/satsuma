@@ -60,7 +60,7 @@ brisk test             # compile and run Tests/ with the app sources
 brisk archive --release
 ```
 
-On first launch macOS asks for **Accessibility** access (System Settings → Privacy & Security → Accessibility). Satsuma needs it to observe Shift while a drag is in progress; it never reads keystrokes otherwise. Notifications are optional.
+Satsuma needs **no Accessibility or Input Monitoring permission**. While the mouse button is down it polls `NSEvent.pressedMouseButtons`, `NSEvent.modifierFlags`, `NSEvent.mouseLocation` and the system drag pasteboard (`NSPasteboard(name: .drag)`) — all readable by any app — so it can tell that a Finder drag is in flight with Shift held and show the wheel, which is itself a normal drop target. It never installs key-event monitors or event taps. Notifications are optional.
 
 ## Quality gates
 
@@ -73,7 +73,7 @@ scripts/check.sh --fix  # apply swift-format fixes first
 
 ## Verification status
 
-The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on the `macos-26` and `xcode-27` (macOS 27 / Xcode 27 SDK, public preview) runners: `brisk build`, `brisk test` (conversion matrix, naming, subtitle, PDF-range, tool-applicability, compression and timecode logic in `Tests/SatsumaTests.swift`), then launches the app with `SATSUMA_SCREENSHOTS=<dir>` so `Sources/App/ScreenshotDriver.swift` generates sample media, opens the radial menu and all 25 tool windows, and captures them with `screencapture`. Screenshots and the release `Satsuma.app` zip are uploaded as workflow artifacts. Actual Finder Shift-drag and the Accessibility prompt cannot be exercised on a headless runner and still need a manual check on a Mac.
+The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on the `macos-26` and `xcode-27` (macOS 27 / Xcode 27 SDK, public preview) runners: `brisk build`, `brisk test` (conversion matrix, naming, subtitle, PDF-range, tool-applicability, compression and timecode logic in `Tests/SatsumaTests.swift`), then launches the app with `SATSUMA_SCREENSHOTS=<dir>` so `Sources/App/ScreenshotDriver.swift` generates sample media, opens the radial menu and all 25 tool windows, and captures them with `screencapture`. Screenshots and the release `Satsuma.app` zip are uploaded as workflow artifacts. Actual Finder Shift-drag cannot be exercised on a headless runner and still need a manual check on a Mac.
 
 ## Project layout
 

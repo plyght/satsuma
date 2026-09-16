@@ -28,11 +28,8 @@ final class DragMonitor {
         let up = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseUp]) { [weak self] _ in
             self?.finishDrag()
         }
-        let flags = NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged]) { [weak self] _ in
-            self?.evaluateModifiers()
-        }
-        monitors = [dragged, down, up, flags].compactMap { $0 }
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
+        monitors = [dragged, down, up].compactMap { $0 }
+        pollTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             self?.pollDragSession()
         }
     }
@@ -56,9 +53,15 @@ final class DragMonitor {
     }
 
     private func pollDragSession() {
-        guard mouseDown || NSEvent.pressedMouseButtons & 1 == 1 else {
-            if presenting { finishDrag() }
+        let pressed = NSEvent.pressedMouseButtons & 1 == 1
+        guard pressed else {
+            if mouseDown || presenting { finishDrag() }
             return
+        }
+        if !mouseDown {
+            mouseDown = true
+            activeURLs = []
+            lastPasteboardChange = -1
         }
         refreshURLsIfNeeded()
         evaluateModifiers()

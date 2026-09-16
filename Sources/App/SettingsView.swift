@@ -72,8 +72,8 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .tint(Theme.accent)
-        .frame(width: 480)
-        .onChange(of: settings.ffmpegPath) { _ in ffmpegStatus = FFmpeg.path }
+        .frame(minWidth: 480, minHeight: 640)
+        .onChange(of: settings.ffmpegPath) { ffmpegStatus = FFmpeg.path }
     }
 
     private func chooseFFmpeg() {

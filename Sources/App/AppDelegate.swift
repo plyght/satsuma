@@ -68,10 +68,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func openSettings() {
         if settingsWindow == nil {
             let view = SettingsView().environmentObject(AppSettings.shared)
-            let window = NSWindow(contentViewController: NSHostingController(rootView: view))
+            let controller = NSHostingController(rootView: view)
+            controller.sizingOptions = []
+            let window = NSWindow(contentViewController: controller)
             window.title = "Satsuma Settings"
-            window.styleMask = [.titled, .closable]
+            window.styleMask = [.titled, .closable, .miniaturizable]
             window.isReleasedWhenClosed = false
+            window.setContentSize(NSSize(width: 480, height: 640))
             window.center()
             settingsWindow = window
         }
