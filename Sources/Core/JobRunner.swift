@@ -312,14 +312,14 @@ struct JobPillView: View {
     @State private var hovering = false
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             ForEach(runner.jobs) { job in
                 JobPillRow(job: job, hovering: hovering) { runner.cancel(job) }
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 7)
+        .padding(.horizontal, runner.jobs.count > 1 ? 22 : 14)
+        .padding(.vertical, runner.jobs.count > 1 ? 10 : 7)
         .frame(minHeight: 30)
         .glassEffect(.regular, in: .rect(cornerRadius: 15))
         .padding(4)
