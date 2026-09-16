@@ -112,6 +112,12 @@ enum ScreenshotDriver {
         }
         NSApp.appearance = AppearanceMode.light.appearance
 
+        let settings = AppDelegate.makeSettingsWindow()
+        settings.makeKeyAndOrderFront(nil)
+        try await Task.sleep(nanoseconds: 1_500_000_000)
+        try await screencapture("settings", ["-x", "-o", "-l", "\(settings.windowNumber)", directory.appendingPathComponent("settings.png").path])
+        settings.orderOut(nil)
+
         for tool in ToolID.allCases {
             guard let files = inputs[tool] else { continue }
             print("opening \(tool.rawValue)")

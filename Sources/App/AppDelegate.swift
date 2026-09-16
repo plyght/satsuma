@@ -65,18 +65,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    static func makeSettingsWindow() -> NSWindow {
+        let view = SettingsView().environmentObject(AppSettings.shared)
+        let controller = NSHostingController(rootView: view)
+        controller.sizingOptions = []
+        let window = NSWindow(contentViewController: controller)
+        window.title = "Satsuma Settings"
+        window.styleMask = [.titled, .closable, .miniaturizable]
+        window.isReleasedWhenClosed = false
+        window.setContentSize(NSSize(width: 480, height: 640))
+        window.center()
+        return window
+    }
+
     @objc private func openSettings() {
         if settingsWindow == nil {
-            let view = SettingsView().environmentObject(AppSettings.shared)
-            let controller = NSHostingController(rootView: view)
-            controller.sizingOptions = []
-            let window = NSWindow(contentViewController: controller)
-            window.title = "Satsuma Settings"
-            window.styleMask = [.titled, .closable, .miniaturizable]
-            window.isReleasedWhenClosed = false
-            window.setContentSize(NSSize(width: 480, height: 640))
-            window.center()
-            settingsWindow = window
+            settingsWindow = Self.makeSettingsWindow()
         }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
