@@ -90,6 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return window
     }
 
+    @MainActor
     @objc private func openSettings() {
         if settingsWindow == nil {
             settingsWindow = Self.makeSettingsWindow()
