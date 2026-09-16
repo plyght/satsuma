@@ -157,13 +157,16 @@ final class RadialController: DragMonitorDelegate {
 
     private func select(_ item: RadialItem) {
         let selectedURLs = urls
+        DiagnosticLog.log("radial select \(item.detail) for \(selectedURLs.map(\.lastPathComponent))")
         hide()
         dragMonitor?.markHandled()
+        DiagnosticLog.log("radial hidden, dispatching action")
         Task { @MainActor in
             switch item.action {
             case .convert(let target):
                 JobRunner.shared.convert(selectedURLs, to: target)
             case .tool(let tool):
+                DiagnosticLog.log("open tool \(tool.rawValue)")
                 ToolWindowManager.shared.open(tool, files: selectedURLs)
             }
         }

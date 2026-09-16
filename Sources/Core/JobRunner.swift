@@ -43,11 +43,16 @@ final class JobRunner: ObservableObject {
     private init() {}
 
     func convert(_ urls: [URL], to target: FileFormat) {
+        DiagnosticLog.log("convert \(urls.map(\.lastPathComponent)) -> \(target.displayName)")
         var reserved = Set<String>()
         for url in urls {
-            guard let source = FileFormat.detect(url) else { continue }
+            guard let source = FileFormat.detect(url) else {
+                DiagnosticLog.log("skipping \(url.lastPathComponent): format not detected")
+                continue
+            }
             let directory = AppSettings.shared.outputLocation.directory(for: url)
             let destination = ConversionMatrix.outputURL(for: url, target: target, in: directory, existing: reserved)
+            DiagnosticLog.log("destination \(destination.path)")
             reserved.insert(destination.lastPathComponent)
             let job = Job(title: "Converting to \(target.displayName)", detail: url.lastPathComponent)
             enqueue(job) { progress in
@@ -60,9 +65,12 @@ final class JobRunner: ObservableObject {
 
     func enqueue(_ job: Job, work: @escaping (@escaping (Double) -> Void) async throws -> [URL]) {
         jobs.append(job)
+        DiagnosticLog.log("enqueue \(job.title) / \(job.detail); jobs=\(jobs.count)")
         showHUD()
+        DiagnosticLog.log("hud shown")
         Task {
             await semaphore.wait()
+            DiagnosticLog.log("job running: \(job.detail)")
             job.status = .running
             let progress: (Double) -> Void = { value in
                 Task { @MainActor in job.progress = value }
@@ -72,10 +80,12 @@ final class JobRunner: ObservableObject {
                 job.outputs = outputs
                 job.progress = 1
                 job.status = .done
+                DiagnosticLog.log("job done: \(job.detail) -> \(outputs.map(\.lastPathComponent))")
                 if AppSettings.shared.revealInFinder, !outputs.isEmpty {
                     NSWorkspace.shared.activateFileViewerSelecting(outputs)
                 }
             } catch {
+                DiagnosticLog.log("job failed: \(job.detail): \(error)")
                 job.status = .failed(error.localizedDescription)
             }
             await semaphore.signal()
@@ -90,6 +100,7 @@ final class JobRunner: ObservableObject {
     private func showHUD() {
         hideWorkItem?.cancel()
         let style = AppSettings.shared.progressStyle
+        DiagnosticLog.log("showHUD style=\(style.rawValue) existing=\(hud != nil)")
         if hud == nil || hudStyle != style {
             hud?.hide()
             hud = style == .card ? JobHUDPanel(runner: self) : JobPillPanel(runner: self)
@@ -170,9 +181,11 @@ final class JobHUDPanel: NSPanel, NSWindowDelegate, JobHUD {
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         isMovableByWindowBackground = true
         delegate = self
+        DiagnosticLog.log("card panel created")
         let controller = NSHostingController(rootView: JobHUDView(runner: runner))
         controller.sizingOptions = [.preferredContentSize]
         contentViewController = controller
+        DiagnosticLog.log("card hosting controller attached")
     }
 
     override var canBecomeKey: Bool { true }
@@ -183,13 +196,18 @@ final class JobHUDPanel: NSPanel, NSWindowDelegate, JobHUD {
     }
 
     func show() {
-        guard let screen = NSScreen.main else { return }
+        guard let screen = NSScreen.main else {
+            DiagnosticLog.log("card show: no main screen")
+            return
+        }
         let visible = screen.visibleFrame
         contentView?.layoutSubtreeIfNeeded()
         let size = contentView?.fittingSize ?? frame.size
+        DiagnosticLog.log("card show size=\(size) visible=\(visible)")
         setContentSize(size)
         setFrameOrigin(NSPoint(x: visible.maxX - size.width - 20, y: visible.maxY - size.height - 20))
         makeKeyAndOrderFront(nil)
+        DiagnosticLog.log("card ordered front")
     }
 
     func hide() { orderOut(nil) }
@@ -205,21 +223,28 @@ final class JobPillPanel: NSPanel, JobHUD {
         isReleasedWhenClosed = false
         ignoresMouseEvents = true
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        DiagnosticLog.log("pill panel created")
         let controller = NSHostingController(rootView: JobPillView(runner: runner))
         controller.sizingOptions = [.preferredContentSize]
         contentViewController = controller
+        DiagnosticLog.log("pill hosting controller attached")
     }
 
     override var canBecomeKey: Bool { true }
 
     func show() {
-        guard let screen = NSScreen.main, let content = contentView else { return }
+        guard let screen = NSScreen.main, let content = contentView else {
+            DiagnosticLog.log("pill show: no main screen or content view")
+            return
+        }
         content.layoutSubtreeIfNeeded()
         let size = content.fittingSize
-        setContentSize(size)
         let top = screen.visibleFrame.maxY
+        DiagnosticLog.log("pill show size=\(size) screen=\(screen.frame) top=\(top)")
+        setContentSize(size)
         setFrameOrigin(NSPoint(x: screen.frame.midX - size.width / 2, y: top - size.height - 2))
         makeKeyAndOrderFront(nil)
+        DiagnosticLog.log("pill ordered front")
     }
 
     func hide() { orderOut(nil) }

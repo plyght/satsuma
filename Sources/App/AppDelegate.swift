@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        DiagnosticLog.start()
         NSApp.setActivationPolicy(.accessory)
         AppSettings.shared.applyAppearance()
         installStatusItem()
@@ -37,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",").target = self
         menu.addItem(withTitle: "About Satsuma", action: #selector(about), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Show Logs", action: #selector(showLogs), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Satsuma", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         item.menu = menu
@@ -82,6 +84,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    @objc private func showLogs() {
+        DiagnosticLog.flush()
+        NSWorkspace.shared.activateFileViewerSelecting([DiagnosticLog.logFile])
     }
 
     @objc private func about() {

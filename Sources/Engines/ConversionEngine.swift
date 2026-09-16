@@ -29,8 +29,10 @@ enum Engines {
 
     static func convert(_ request: ConversionRequest) async throws {
         guard let engine = engine(from: request.sourceFormat, to: request.target) else {
+            DiagnosticLog.log("no engine for \(request.sourceFormat.rawValue) -> \(request.target.rawValue)")
             throw SatsumaError.unsupportedConversion(request.sourceFormat, request.target)
         }
+        DiagnosticLog.log("engine \(type(of: engine)) \(request.sourceFormat.rawValue) -> \(request.target.rawValue) src=\(request.source.path)")
         let temp = request.destination.deletingLastPathComponent()
             .appendingPathComponent(".satsuma-\(UUID().uuidString).\(request.destination.pathExtension)")
         let staged = ConversionRequest(
@@ -42,6 +44,7 @@ enum Engines {
         )
         do {
             try await engine.convert(staged)
+            DiagnosticLog.log("engine finished, staged=\(temp.lastPathComponent)")
             var isDirectory: ObjCBool = false
             if FileManager.default.fileExists(atPath: temp.path, isDirectory: &isDirectory) {
                 if isDirectory.boolValue {
@@ -56,6 +59,7 @@ enum Engines {
                 }
             }
         } catch {
+            DiagnosticLog.log("engine threw: \(error)")
             try? FileManager.default.removeItem(at: temp)
             throw error
         }

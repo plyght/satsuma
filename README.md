@@ -62,6 +62,10 @@ brisk archive --release
 
 Satsuma needs **no Accessibility or Input Monitoring permission**. During a Finder drag it polls `NSEvent.pressedMouseButtons`, `NSEvent.modifierFlags`, `NSEvent.mouseLocation` and the system drag pasteboard (`NSPasteboard(name: .drag)`). If Finder has not published the file URLs yet, Shift plus sustained drag movement shows a generic drop target immediately; the wheel then reads the files from the drag pasteboard or `NSDraggingInfo` as soon as they become available. It never installs key-event monitors or event taps. Progress shows in a floating card or a small pill under the notch (Settings > Appearance); there are no system notifications.
 
+## Logs
+
+Satsuma writes a local activity log to `~/Library/Logs/Satsuma/satsuma.log` (drag selection, job start/finish, conversion steps, errors) and, if the process dies from a signal, a backtrace to `~/Library/Logs/Satsuma/crash.log`. "Show Logs" in the menu bar menu reveals them in Finder. Nothing leaves the machine.
+
 ## Quality gates
 
 ```bash

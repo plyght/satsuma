@@ -23,6 +23,7 @@ enum ImageIOBridge {
         let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any] ?? [:]
         let width = (properties[kCGImagePropertyPixelWidth] as? Int) ?? 0
         let height = (properties[kCGImagePropertyPixelHeight] as? Int) ?? 0
+        DiagnosticLog.log("image load \(url.lastPathComponent) type=\((CGImageSourceGetType(source) as String?) ?? "?") \(width)x\(height) max=\(maxPixelSize.map(String.init) ?? "none")")
         let longest = max(width, height, 1)
         var options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
@@ -30,8 +31,12 @@ enum ImageIOBridge {
             kCGImageSourceShouldCacheImmediately: true,
             kCGImageSourceThumbnailMaxPixelSize: maxPixelSize.map { min($0, longest) } ?? longest,
         ]
-        if let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) { return image }
+        if let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) {
+            DiagnosticLog.log("thumbnail decoded \(image.width)x\(image.height) alpha=\(image.alphaInfo.rawValue)")
+            return image
+        }
         options[kCGImageSourceCreateThumbnailWithTransform] = false
+        DiagnosticLog.log("thumbnail failed, falling back to full decode")
         if let image = CGImageSourceCreateImageAtIndex(source, 0, nil) { return image }
         if let ns = NSImage(contentsOf: url), let cg = ns.cgImage(forProposedRect: nil, context: nil, hints: nil) { return cg }
         throw SatsumaError.unreadable(url)
@@ -76,6 +81,7 @@ enum ImageIOBridge {
         guard let type = format.utType, nativeEncoders.contains(type.identifier) else {
             throw SatsumaError.encodeFailed("\(format.displayName) natively")
         }
+        DiagnosticLog.log("image write \(url.lastPathComponent) as \(type.identifier) quality=\(quality) metadata=\(metadata?.count ?? 0)")
         guard let destination = CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil) else {
             throw SatsumaError.encodeFailed(url.lastPathComponent)
         }
@@ -86,9 +92,12 @@ enum ImageIOBridge {
         var output = image
         if format == .jpg || format == .bmp, image.alphaInfo != .none, image.alphaInfo != .noneSkipLast, image.alphaInfo != .noneSkipFirst {
             output = flatten(image, background: .white)
+            DiagnosticLog.log("flattened alpha \(output.width)x\(output.height)")
         }
         CGImageDestinationAddImage(destination, output, options as CFDictionary)
+        DiagnosticLog.log("image added, finalizing")
         guard CGImageDestinationFinalize(destination) else { throw SatsumaError.encodeFailed(url.lastPathComponent) }
+        DiagnosticLog.log("image finalized \(url.lastPathComponent)")
     }
 
     static func writeAnyFormat(_ image: CGImage, to url: URL, format: FileFormat, quality: Double = 0.9) async throws {
@@ -96,6 +105,7 @@ enum ImageIOBridge {
             try write(image, to: url, format: format, quality: quality)
             return
         }
+        DiagnosticLog.log("no native encoder for \(format.rawValue), using ffmpeg")
         let temp = FileManager.default.temporaryDirectory.appendingPathComponent("satsuma-\(UUID().uuidString).png")
         defer { try? FileManager.default.removeItem(at: temp) }
         try write(image, to: temp, format: .png)
