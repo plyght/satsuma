@@ -183,7 +183,7 @@ final class JobHUDPanel: NSPanel, NSWindowDelegate, JobHUD {
         delegate = self
         DiagnosticLog.log("card panel created")
         let controller = NSHostingController(rootView: JobHUDView(runner: runner))
-        controller.sizingOptions = [.preferredContentSize]
+        controller.sizingOptions = []
         contentViewController = controller
         DiagnosticLog.log("card hosting controller attached")
     }
@@ -202,7 +202,7 @@ final class JobHUDPanel: NSPanel, NSWindowDelegate, JobHUD {
         }
         let visible = screen.visibleFrame
         contentView?.layoutSubtreeIfNeeded()
-        let size = contentView?.fittingSize ?? frame.size
+        let size = (contentView?.fittingSize ?? frame.size).roundedUp
         DiagnosticLog.log("card show size=\(size) visible=\(visible)")
         setContentSize(size)
         setFrameOrigin(NSPoint(x: visible.maxX - size.width - 20, y: visible.maxY - size.height - 20))
@@ -225,7 +225,7 @@ final class JobPillPanel: NSPanel, JobHUD {
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         DiagnosticLog.log("pill panel created")
         let controller = NSHostingController(rootView: JobPillView(runner: runner))
-        controller.sizingOptions = [.preferredContentSize]
+        controller.sizingOptions = []
         contentViewController = controller
         DiagnosticLog.log("pill hosting controller attached")
     }
@@ -238,7 +238,7 @@ final class JobPillPanel: NSPanel, JobHUD {
             return
         }
         content.layoutSubtreeIfNeeded()
-        let size = content.fittingSize
+        let size = content.fittingSize.roundedUp
         let top = screen.visibleFrame.maxY
         DiagnosticLog.log("pill show size=\(size) screen=\(screen.frame) top=\(top)")
         setContentSize(size)
@@ -248,6 +248,10 @@ final class JobPillPanel: NSPanel, JobHUD {
     }
 
     func hide() { orderOut(nil) }
+}
+
+private extension CGSize {
+    var roundedUp: CGSize { CGSize(width: ceil(width), height: ceil(height)) }
 }
 
 struct JobPillView: View {
