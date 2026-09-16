@@ -65,18 +65,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    private static let settingsToolbarDelegate = SettingsToolbarDelegate()
+
     static func makeSettingsWindow() -> NSWindow {
-        let view = SettingsView().environmentObject(AppSettings.shared)
+        let model = SettingsTabModel()
+        let view = SettingsView(model: model).environmentObject(AppSettings.shared)
         let controller = NSHostingController(rootView: view)
         controller.sizingOptions = []
         let window = NSWindow(contentViewController: controller)
         window.title = "Satsuma Settings"
-        window.styleMask = [.titled, .closable, .miniaturizable, .fullSizeContentView]
-        window.titlebarAppearsTransparent = true
+        window.styleMask = [.titled, .closable, .miniaturizable]
         window.titleVisibility = .hidden
         window.toolbarStyle = .unified
+        settingsToolbarDelegate.model = model
         let toolbar = NSToolbar(identifier: "SettingsToolbar")
+        toolbar.delegate = settingsToolbarDelegate
+        toolbar.displayMode = .iconOnly
+        toolbar.allowsUserCustomization = false
         toolbar.showsBaselineSeparator = false
+        toolbar.centeredItemIdentifiers = [SettingsToolbarDelegate.tabsItem]
         window.toolbar = toolbar
         window.isMovableByWindowBackground = true
         window.isReleasedWhenClosed = false

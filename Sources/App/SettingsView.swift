@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 enum SettingsTab: String, CaseIterable, Identifiable {
@@ -27,32 +28,32 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     }
 }
 
+@MainActor
+final class SettingsTabModel: ObservableObject {
+    @Published var tab: SettingsTab = .general
+}
+
 struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
-    @State private var tab: SettingsTab = .general
+    @ObservedObject var model: SettingsTabModel
     @State private var ffmpegStatus = FFmpeg.path
 
     static let width: CGFloat = 520
-    static let height: CGFloat = 560
-    static let barHeight: CGFloat = 52
+    static let height: CGFloat = 500
 
     var body: some View {
-        VStack(spacing: 0) {
-            SettingsTabBar(selection: $tab)
-                .frame(height: Self.barHeight)
-            Form {
-                switch tab {
-                case .general: general
-                case .appearance: appearance
-                case .conversion: conversion
-                case .about: about
-                }
+        Form {
+            switch model.tab {
+            case .general: general
+            case .appearance: appearance
+            case .conversion: conversion
+            case .about: about
             }
-            .formStyle(.grouped)
-            .id(tab)
-            .transition(.opacity)
         }
-        .animation(.easeInOut(duration: 0.18), value: tab)
+        .formStyle(.grouped)
+        .id(model.tab)
+        .transition(.opacity)
+        .animation(.easeInOut(duration: 0.18), value: model.tab)
         .frame(width: Self.width, height: Self.height)
         .tint(Theme.accent)
         .onChange(of: settings.ffmpegPath) { ffmpegStatus = FFmpeg.path }
@@ -188,46 +189,66 @@ struct SettingsView: View {
 }
 
 struct SettingsTabBar: View {
-    @Binding var selection: SettingsTab
+    @ObservedObject var model: SettingsTabModel
     @Namespace private var namespace
 
     var body: some View {
-        HStack(spacing: 0) {
-            Color.clear.frame(width: 78)
-            Spacer(minLength: 0)
-            GlassEffectContainer(spacing: 0) {
-                HStack(spacing: 2) {
-                    ForEach(SettingsTab.allCases) { tab in
-                        Button {
-                            selection = tab
-                        } label: {
-                            Label(tab.title, systemImage: tab.symbol)
-                                .labelStyle(.titleOnly)
-                                .font(.system(size: 13, weight: selection == tab ? .semibold : .regular))
-                                .foregroundStyle(selection == tab ? Color.white : Color.primary)
-                                .lineLimit(1)
-                                .fixedSize()
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 6)
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .background {
-                            if selection == tab {
-                                Color.clear
-                                    .glassEffect(.regular.tint(Theme.accent).interactive(), in: Capsule())
-                                    .matchedGeometryEffect(id: "selection", in: namespace)
-                            }
+        GlassEffectContainer(spacing: 0) {
+            HStack(spacing: 2) {
+                ForEach(SettingsTab.allCases) { tab in
+                    Button {
+                        model.tab = tab
+                    } label: {
+                        Label(tab.title, systemImage: tab.symbol)
+                            .labelStyle(.titleOnly)
+                            .font(.system(size: 13, weight: model.tab == tab ? .semibold : .regular))
+                            .foregroundStyle(model.tab == tab ? Color.white : Color.primary)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 6)
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .background {
+                        if model.tab == tab {
+                            Color.clear
+                                .glassEffect(.regular.tint(Theme.accent).interactive(), in: Capsule())
+                                .matchedGeometryEffect(id: "selection", in: namespace)
                         }
                     }
                 }
-                .padding(3)
-                .glassEffect(.regular, in: Capsule())
             }
-            Spacer(minLength: 0)
-            Color.clear.frame(width: 78)
+            .padding(3)
+            .glassEffect(.regular, in: Capsule())
         }
-        .padding(.horizontal, 8)
-        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: selection)
+        .animation(.spring(response: 0.3, dampingFraction: 0.85), value: model.tab)
+    }
+}
+
+final class SettingsToolbarDelegate: NSObject, NSToolbarDelegate {
+    static let tabsItem = NSToolbarItem.Identifier("satsuma.settings.tabs")
+    var model: SettingsTabModel?
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [.flexibleSpace, Self.tabsItem, .flexibleSpace]
+    }
+
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        toolbarDefaultItemIdentifiers(toolbar)
+    }
+
+    func toolbar(
+        _ toolbar: NSToolbar,
+        itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
+        willBeInsertedIntoToolbar flag: Bool
+    ) -> NSToolbarItem? {
+        guard itemIdentifier == Self.tabsItem, let model else { return nil }
+        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+        let hosting = NSHostingView(rootView: SettingsTabBar(model: model))
+        hosting.sizingOptions = [.intrinsicContentSize]
+        item.view = hosting
+        item.isBordered = false
+        return item
     }
 }
